@@ -381,493 +381,169 @@ elif mode == "📝 等效事件替换":
 
                     st.text_area("📋 一键复制", value=copy_text, height=100, key=f"copy_{i}", label_visibility="collapsed")
 
-# ==================== 模式3: 生成分镜 ====================
+# ==================== 模式3: 生成分镜（优化版） ====================
 
 elif mode == "🎬 生成分镜":
     st.title("🎬 生成分镜")
-    st.markdown("基于视频描述，生成分镜和分镜提示词")
-
-    # 初始化描述输入框数量
-    if "desc_count" not in st.session_state:
-        st.session_state["desc_count"] = 1
+    st.markdown("极短篇分镜生成器 - 专注15秒内的视频脚本")
 
     col1, col2 = st.columns([1, 1.5])
     with col1:
         st.subheader("📝 输入信息")
 
-        # 动态生成多个描述输入框
-        descriptions = []
-        for i in range(st.session_state["desc_count"]):
-            desc = st.text_area(f"视频描述 {i+1}", key=f"desc_{i}", placeholder="请输入视频描述...", height=100)
-            if desc:
-                descriptions.append(desc)
+        # 视频描述输入
+        video_description = st.text_area(
+            "视频描述",
+            placeholder="请输入视频描述（建议15秒内的极短篇）...\n例如：地铁上女孩被泼咖啡，男主递纸巾，两人眼神交汇",
+            height=120,
+            key="storyboard_desc"
+        )
 
-        # 添加更多描述输入框
-        col_add, col_clear = st.columns([2, 1])
-        with col_add:
-            if st.button("➕ 添加更多描述", key="add_desc"):
-                st.session_state["desc_count"] += 1
-                st.rerun()
-        with col_clear:
-            if st.session_state["desc_count"] > 1 and st.button("🔄 清空", key="clear_desc"):
-                st.session_state["desc_count"] = 1
-                for key in list(st.session_state.keys()):
-                    if key.startswith("desc_"):
-                        del st.session_state[key]
-                st.rerun()
+        aspect_ratio = st.selectbox("画面比例", ["16:9", "9:16", "1:1"], key="storyboard_ratio")
 
-        aspect_ratio = st.selectbox("画面比例", ["16:9", "9:16", "1:1"])
-
-        # 清除分析结果
-        if st.session_state.get("attraction_points") or st.session_state.get("shots_data") or st.session_state.get("attraction_raw"):
-            if st.button("🗑️ 清除分析结果", key="clear_analysis"):
-                st.session_state["attraction_points"] = {}
-                st.session_state["attraction_raw"] = []
-                st.session_state["shots_data"] = ""
-                st.rerun()
-
-        generate_btn = st.button("🚀 生成分镜", type="primary", disabled=not api_key)
-
-    # 分析吸引力点
-    if "attraction_points" not in st.session_state:
-        st.session_state["attraction_points"] = {}
-
-    if generate_btn:
-        if not api_key:
-            st.error("请先输入 API Key")
-        elif not descriptions:
-            st.error("请输入至少一个视频描述")
-        else:
-            with st.spinner("🔍 多维度分析中..."):
-                # 先从三个角度分析每个描述
-                attraction_prompt = f"""从专业剪辑、导演分镜、投放优化三个角度，深度分析以下{len(descriptions)}个视频描述。
+        # 生成按钮
+        if st.button("🚀 生成分镜", type="primary", disabled=not api_key):
+            if not api_key:
+                st.error("请先输入 API Key")
+            elif not video_description.strip():
+                st.error("请输入视频描述")
+            else:
+                with st.spinner("🎬 分镜生成中..."):
+                    prompt = f"""基于以下视频描述，生成极短篇分镜脚本（≤15秒）。
 
 ## 视频描述
-{chr(10).join([f"描述{i+1}: {d}" for i, d in enumerate(descriptions)])}
-
-## 重要：时长估算
-请先估算每个视频描述的预计时长（秒），如果超过15秒，需要拆分成多个片段。
-- 估算依据：内容复杂度、镜头数量、叙事完整性
-- 如果需要拆分，请给出拆分建议（如：在哪个情节点拆分）
-
-## 三个分析维度
-
-### 一、剪辑角度（技术层面）
-1. **冲突/矛盾**：描述中有什么戏剧冲突或矛盾点？
-2. **悬念**：有什么让人想知道后续发展的点？
-3. **情绪highlights**：有哪些情绪高潮或情感爆发点？
-4. **视觉亮点**：有什么视觉上吸引人的元素？
-5. **节奏变化**：描述中暗示了哪些节奏变化（快-慢-快等）？
-
-### 二、导演角度（叙事层面）
-1. **叙事节奏**：这个故事应该用怎样的节奏推进？（快节奏悬念型 / 慢热铺垫型 / 起伏跌宕型）
-2. **镜头语言**：哪些场景适合用特写强调？哪些需要全景交代？
-3. **情感曲线**：情绪如何层层递进？高潮点在哪里？
-4. **转场设计**：镜头之间如何自然过渡？
-
-### 三、投放角度（用户留存）
-1. **钩子画面**：前3秒最能留住观众的是什么画面？
-2. **完播关键**：哪个时刻最影响用户是否继续看下去？
-3. **互动点**：哪些画面可能引发评论/转发？
-4. **风险评估**：这类题材/内容在目标平台的风险点是什么？不同题材对血腥/暴露的接受度不同，请给出差异化建议
-5. **优化建议**：哪些画面可以强化？哪些可以弱化？
-
-## 输出格式（严格JSON数组）
-[
-  {{
-    "description_index": 1,
-    "description": "原始描述",
-    "estimated_duration": "预计时长（秒），如 12 或 18",
-    "need_split": true/false,
-    "split_suggestion": "如果需要拆分，描述在哪里拆分及原因",
-    "editing_analysis": {{
-      "conflict": "冲突/矛盾点",
-      "suspense": "悬念点",
-      "emotion": "情绪高潮点",
-      "visual": "视觉亮点",
-      "rhythm": "节奏变化"
-    }},
-    "directing_analysis": {{
-      "narrative_rhythm": "叙事节奏建议",
-      "shot_language": "镜头语言设计",
-      "emotion_curve": "情感曲线",
-      "transition_design": "转场设计"
-    }},
-    "publishing_analysis": {{
-      "hook_shot": "前3秒钩子画面",
-      "completion_key": "影响完播的关键时刻",
-      "interaction_point": "可能引发互动的点",
-      "risk_assessment": "风险评估（差异化建议）",
-      "optimization": "优化建议"
-    }},
-    "comprehensive_suggestion": "综合三个角度的核心建议"
-  }}
-]
-
-重要：只输出JSON数组，每个视频都要有完整的三个维度分析！"""
-
-                result = call_gemini_api(api_key, attraction_prompt)
-                content = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                attraction_data = parse_json_response(content)
-
-                if attraction_data:
-                    st.session_state["attraction_points"] = {i: attraction_data[i] if i < len(attraction_data) else None for i in range(len(descriptions))}
-                    st.session_state["attraction_raw"] = attraction_data
-                else:
-                    st.session_state["attraction_points"] = {}
-
-            with st.spinner("分镜生成中..."):
-
-                # 分析每个视频的时长和拆分需求
-                attraction_raw = st.session_state.get("attraction_raw", [])
-                video_parts = []  # 存储拆分后的视频片段
-
-                for i, attr in enumerate(attraction_raw):
-                    if attr:
-                        duration = attr.get("estimated_duration", "")
-                        need_split = attr.get("need_split", False)
-                        split_suggestion = attr.get("split_suggestion", "") or ""
-
-                        # 所有视频都添加到列表
-                        video_parts.append({
-                            "original_index": i + 1,
-                            "description": descriptions[i],
-                            "duration": duration,
-                            "need_split": need_split,
-                            "split_suggestion": split_suggestion,
-                            "attr": attr
-                        })
-
-                # 构建包含三个维度分析结果的描述
-                attraction_context = ""
-                for i, attr in enumerate(attraction_raw):
-                    if attr:
-                        # 剪辑分析
-                        editing = attr.get("editing_analysis", {})
-                        # 导演分析
-                        directing = attr.get("directing_analysis", {})
-                        # 投放分析
-                        publishing = attr.get("publishing_analysis", {})
-                        # 综合建议
-                        comprehensive = attr.get("comprehensive_suggestion", "")
-                        # 时长信息
-                        duration = attr.get("estimated_duration", "未估算")
-                        need_split = attr.get("need_split", False)
-                        split_suggestion = attr.get("split_suggestion", "")
-
-                        split_info = f" | 时长: {duration}秒"
-                        if need_split:
-                            split_info += f" | ⚠️ 需拆分: {split_suggestion}"
-
-                        attraction_context += f"""
-
-=== 描述{i+1} {split_info} ===
-
-【剪辑角度】
-冲突点: {editing.get('conflict', '无')}
-悬念点: {editing.get('suspense', '无')}
-情绪高潮: {editing.get('emotion', '无')}
-视觉亮点: {editing.get('visual', '无')}
-节奏变化: {editing.get('rhythm', '无')}
-
-【导演角度】
-叙事节奏: {directing.get('narrative_rhythm', '无')}
-镜头语言: {directing.get('shot_language', '无')}
-情感曲线: {directing.get('emotion_curve', '无')}
-转场设计: {directing.get('transition_design', '无')}
-
-【投放角度】
-前3秒钩子: {publishing.get('hook_shot', '无')}
-完播关键: {publishing.get('completion_key', '无')}
-互动点: {publishing.get('interaction_point', '无')}
-风险评估: {publishing.get('risk_assessment', '无')}
-优化建议: {publishing.get('optimization', '无')}
-
-【综合建议】{comprehensive}"""
-
-                # 判断是否需要拆分视频
-                need_split_any = False
-                split_count = 0
-                for part in video_parts:
-                    if part.get("need_split") and part.get("split_suggestion"):
-                        need_split_any = True
-                        split_count += 1
-
-                if need_split_any:
-                    # 需要拆分，生成多个提示词
-                    all_results = []
-                    st.warning(f"⚠️ 检测到 {split_count} 个视频需要拆分成多段生成（每段≤15秒）")
-
-                    for idx, part in enumerate(video_parts):
-                        original_idx = part.get("original_index", idx + 1)
-
-                        if part.get("need_split") and part.get("split_suggestion"):
-                            # 需要拆分，生成两个片段
-                            split_suggestion = part.get("split_suggestion", "")
-
-                            # 先生成片段A
-                            with st.spinner(f"正在生成第{original_idx}个视频的片段A..."):
-                                split_prompt_a = f"""基于以下视频描述，生成分镜脚本的第一部分。要求：专业剪辑师级别，像可直接拍摄的指令。
-
-## 视频描述
-{part['description']}
-
-## 拆分建议
-{split_suggestion}
-
-## 重要：本次只生成第一部分（片段A）
-- 开头到拆分点为止，作为悬念铺垫
-- 以钩子/疑问结尾，吸引用户看下一集
-- 时长控制在10-12秒内
+{video_description}
 
 ## 画面比例
 {aspect_ratio}
 
-## 核心原则
-1. **像分镜头脚本**：输出拍摄指令
-2. **时间精确**：时间戳精确到毫秒
-3. **节奏放缓**：每个镜头至少1秒
-4. **时长≤15秒**：第一部分
+## 输出要求【严格JSON格式】
 
-## 色调与光影
-开篇必须写整体风格描述
+### 1. 吸引力分析（投放角度）
+- hook_shot: 前3秒最能留住观众的钩子画面
+- hook_narration: 配合钩子画面的旁白/台词
+- twist: 反常识/反转设定
+- ending_tease: 结尾悬念，诱导点赞/评论
 
-## 输出格式
-【视频{original_idx} - 片段A】描述
-总时长：X秒
-色调/光影/氛围：具体描述
+### 2. 分镜脚本（JSON数组）
+每个分镜包含：
+- shot_id: 镜头序号(1,2,3...)
+- timestamp: 时间戳范围，格式 "00:00.000-00:00.000"
+- shot_type: 景别（远景/全景/中景/近景/特写/大特写）
+- camera_movement: 运镜（固定/微距缓推/快速推入/缓慢拉出/横摇跟随/手持晃动/升格慢镜头）
+- description: 画面描述，包含人物动作、表情、服装、道具、环境细节
+- narration: 该镜头的旁白/台词（无则为空字符串）
 
-分镜1 [00:00.000-00:0X.000]:
-[00:00.000] 景别: 具体画面描述...
-
-重要：只输出片段A的分镜脚本！"""
-
-                                result_a = call_gemini_api(api_key, split_prompt_a)
-                                content_a = result_a.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                                if content_a:
-                                    all_results.append(f"【视频{original_idx} - 片段A】{part['description']}\n{content_a}")
-
-                            # 再生成片段B
-                            with st.spinner(f"正在生成第{original_idx}个视频的片段B..."):
-                                split_prompt_b = f"""基于以下视频描述，生成分镜脚本的第二部分。要求：专业剪辑师级别，像可直接拍摄的指令。
-
-## 视频描述
-{part['description']}
-
-## 拆分建议
-{split_suggestion}
-
-## 重要：本次只生成第二部分（片段B）
-- 从拆分点开始到结尾
-- 延续片段A的故事
-- 时长控制在10-12秒内
-
-## 画面比例
-{aspect_ratio}
-
-## 核心原则
-1. **像分镜头脚本**：输出拍摄指令
-2. **时间精确**：时间戳精确到毫秒
-3. **节奏放缓**：每个镜头至少1秒
-4. **时长≤15秒**：第二部分
-
-## 色调与光影
-开篇必须写整体风格描述（与片段A一致）
-
-## 输出格式
-【视频{original_idx} - 片段B】描述
-总时长：X秒
-色调/光影/氛围：具体描述
-
-分镜1 [00:00.000-00:0X.000]:
-[00:00.000] 景别: 具体画面描述...
-
-重要：只输出片段B的分镜脚本！"""
-
-                                result_b = call_gemini_api(api_key, split_prompt_b)
-                                content_b = result_b.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                                if content_b:
-                                    all_results.append(f"【视频{original_idx} - 片段B】{part['description']}\n{content_b}")
-                        else:
-                            # 不需要拆分
-                            with st.spinner(f"正在生成第{original_idx}个视频..."):
-                                single_prompt = f"""基于以下视频描述，生成分镜脚本。要求：专业剪辑师级别，像可直接交给摄像师拍摄的指令。
-
-## 视频描述
-{part['description']}
-
-## 画面比例
-{aspect_ratio}
+### 3. 整体信息
+- total_duration: 总时长（秒）
+- atmosphere: 整体氛围描述
+- style: 风格标签（如：悬疑/温馨/搞笑/虐心）
+- music_suggestion: 背景音乐建议
 
 ## 核心原则【必须遵守】
-1. **拍摄指令而非影评**：描述应该是"要拍什么"，不是"看到了什么"
-   - ❌ 错误："男主露出惊讶的表情"
-   - ✅ 正确："特写：男主睁大眼睛，嘴唇微张，表情僵住约1.5秒"
-2. **时间戳精确到毫秒**：每个镜头都要有精确的时间范围
-3. **每个镜头至少1秒**：确保观众能看清画面、感受情绪
-4. **时长≤15秒**：控制总时长
-5. **禁止元注释**：不写"（情绪高潮）""（视觉亮点）"等括号内容
+1. 时长≤15秒：极短篇控制
+2. 每个镜头≥1秒：确保观众看清
+3. 时间戳精确到毫秒：00:00.000格式
+4. 画面描述=拍摄指令：描述"要拍什么"，不是"看到了什么"
+5. 禁止元注释：不用"（情绪高潮）"等括号
 
-## 色调与光影（开篇写大致整体风格即可）
-- 色调：大致色系倾向
-- 光影：大致光源类型
-- 氛围：大致情绪基调
+## 输出格式（严格JSON）
+{{
+  "attraction_analysis": {{
+    "hook_shot": "前3秒钩子画面描述",
+    "hook_narration": "钩子旁白",
+    "twist": "反常识/反转设定",
+    "ending_tease": "结尾悬念诱导"
+  }},
+  "shots": [
+    {{
+      "shot_id": 1,
+      "timestamp": "00:00.000-00:02.500",
+      "shot_type": "特写",
+      "camera_movement": "固定",
+      "description": "具体画面描述（人物+动作+表情+服装+道具+环境）",
+      "narration": "旁白或台词"
+    }}
+  ],
+  "total_duration": 12,
+  "atmosphere": "整体氛围描述",
+  "style": "风格标签",
+  "music_suggestion": "背景音乐建议"
+}}
 
-## 输出格式
-【视频{original_idx}】{part['description']}
-总时长：X秒
-色调/光影/氛围：具体描述
-
-分镜1 [00:00.000-00:0X.000]:
-[00:00.000] 景别: 具体画面描述（包含人物动作、表情、服装、道具、环境细节）
-
-分镜2 [00:0X.000-00:XX.000]:
-...
-
-重要：只输出分镜脚本，不要任何分析或建议！"""
-
-                                result = call_gemini_api(api_key, single_prompt)
-                                content = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                                if content:
-                                    all_results.append(f"【视频{original_idx}】{part['description']}\n{content}")
-
-                    st.session_state["shots_data"] = "\n\n---\n\n".join(all_results)
-                else:
-                    # 不需要拆分，正常生成
-                    prompt = f"""基于以下{len(descriptions)}个视频描述，生成分镜脚本。要求：专业剪辑师级别，像可直接交给摄像师拍摄的指令，而非影评。
-
-## 视频描述
-{chr(10).join([f"描述{i+1}: {d}" for i, d in enumerate(descriptions)])}
-
-## 画面比例
-{aspect_ratio}
-
-## 核心原则【违反将被退回】
-1. **拍摄指令vs影评**：
-   - ❌ 错误："男主露出惊讶的表情，感受到命运的捉弄"
-   - ✅ 正确："特写：男主睁大眼睛，镜头缓慢推进，背景音乐骤停"
-2. **禁止元注释**：不用"（冲突点）""（情绪高潮）""（视觉亮点）"等括号
-3. **用画面表达情绪**：观众通过画面感受到情绪，而非文字标注
-4. **叙事流畅**：镜头间有逻辑关联，像讲故事推进
-5. **节奏控制**：每个镜头≥1秒，确保观众看清
-6. **时间戳精确**：毫秒级如[00:00.000]，合理分配时长
-
-## 三维度分析建议（必须融入分镜）
-{attraction_context}
-
-## 色调与光影（开篇写大致整体风格即可）
-- 色调：大致色系倾向
-- 光影：大致光源类型
-- 氛围：大致情绪基调
-
-## 输出格式
-【视频1】描述1
-总时长：X秒
-色调/光影/氛围：具体描述
-
-分镜1 [00:00.000-00:0X.000]:
-[00:00.000] 景别: 具体画面（人物+动作+表情+服装+道具+环境）
-[00:0X.000] 景别: 下一个镜头...
-
-分镜2 [00:0X.000-00:XX.000]:
-...
-
-【视频2】描述2
-...
-
-## 景别术语
-远景/全景/中景/近景/特写/大特写
-
-## 运镜术语
-固定/微距缓推/快速推入/缓慢拉出/横摇跟随/轨道平移/手持晃动/升格慢镜头
-
-重要：只输出分镜脚本，禁止分析/建议/点评！"""
+重要：只输出JSON，不要有任何解释性文字！"""
 
                     result = call_gemini_api(api_key, prompt)
-                    content = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                    content_result = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                    shots_data = parse_json_response(content_result)
 
-                    if content:
-                        st.session_state["shots_data"] = content
+                    if shots_data:
+                        st.session_state["shots_json"] = shots_data
                     else:
-                        st.error("未能获取结果，请重试")
+                        st.session_state["shots_json"] = None
+                        st.error("无法解析结果，请重试")
 
-    if "shots_data" in st.session_state:
-        with col2:
-            # 显示三个维度的分析结果
-            attraction_raw = st.session_state.get("attraction_raw", [])
-            if attraction_raw:
-                st.subheader("🎯 多维度专业分析")
-                for i, attr in enumerate(attraction_raw):
-                    if attr:
-                        # 获取时长和拆分信息
-                        duration = attr.get("estimated_duration", "")
-                        need_split = attr.get("need_split", False)
-                        split_suggestion = attr.get("split_suggestion", "")
+    # 显示结果
+    with col2:
+        shots_json = st.session_state.get("shots_json")
 
-                        expander_title = f"描述{i+1}"
-                        if duration:
-                            expander_title += f" - {duration}秒"
-                        if need_split:
-                            expander_title += " ⚠️ 需拆分"
+        if shots_json:
+            st.subheader("🎯 吸引力分析")
 
-                        with st.expander(expander_title, expanded=True):
-                            # 时长和拆分提示
-                            if need_split:
-                                st.warning(f"⏱️ 预计时长: {duration}秒 | 需要拆分成多段（每段≤15秒）")
-                                st.markdown(f"**拆分建议:** {split_suggestion}")
-                            elif duration:
-                                st.info(f"⏱️ 预计时长: {duration}秒")
-
-                            # 剪辑角度
-                            editing = attr.get("editing_analysis", {})
-                            if any(editing.values()):
-                                st.markdown("### 🎬 剪辑角度")
-                                if editing.get("conflict"):
-                                    st.markdown(f"**冲突:** {editing.get('conflict', '')}")
-                                if editing.get("suspense"):
-                                    st.markdown(f"**悬念:** {editing.get('suspense', '')}")
-                                if editing.get("emotion"):
-                                    st.markdown(f"**情绪:** {editing.get('emotion', '')}")
-                                if editing.get("visual"):
-                                    st.markdown(f"**视觉:** {editing.get('visual', '')}")
-                                if editing.get("rhythm"):
-                                    st.markdown(f"**节奏:** {editing.get('rhythm', '')}")
-
-                            # 导演角度
-                            directing = attr.get("directing_analysis", {})
-                            if any(directing.values()):
-                                st.markdown("### 🎥 导演角度")
-                                if directing.get("narrative_rhythm"):
-                                    st.markdown(f"**叙事节奏:** {directing.get('narrative_rhythm', '')}")
-                                if directing.get("shot_language"):
-                                    st.markdown(f"**镜头语言:** {directing.get('shot_language', '')}")
-                                if directing.get("emotion_curve"):
-                                    st.markdown(f"**情感曲线:** {directing.get('emotion_curve', '')}")
-                                if directing.get("transition_design"):
-                                    st.markdown(f"**转场:** {directing.get('transition_design', '')}")
-
-                            # 投放角度
-                            publishing = attr.get("publishing_analysis", {})
-                            if any(publishing.values()):
-                                st.markdown("### 📢 投放角度")
-                                if publishing.get("hook_shot"):
-                                    st.markdown(f"**前3秒钩子:** {publishing.get('hook_shot', '')}")
-                                if publishing.get("completion_key"):
-                                    st.markdown(f"**完播关键:** {publishing.get('completion_key', '')}")
-                                if publishing.get("interaction_point"):
-                                    st.markdown(f"**互动点:** {publishing.get('interaction_point', '')}")
-                                if publishing.get("risk_assessment"):
-                                    st.info(f"**风险评估:** {publishing.get('risk_assessment', '')}")
-                                if publishing.get("optimization"):
-                                    st.success(f"**优化建议:** {publishing.get('optimization', '')}")
-
-                            # 综合建议
-                            if attr.get("comprehensive_suggestion"):
-                                st.info(f"💡 **综合建议:** {attr.get('comprehensive_suggestion', '')}")
+            # 吸引力分析
+            attraction = shots_json.get("attraction_analysis", {})
+            if attraction:
+                if attraction.get("hook_shot"):
+                    st.markdown("**🎣 钩子画面:**")
+                    st.info(attraction.get("hook_shot", ""))
+                if attraction.get("hook_narration"):
+                    st.markdown("**🎤 钩子旁白:**")
+                    st.success(attraction.get("hook_narration", ""))
+                if attraction.get("twist"):
+                    st.markdown("**🔄 反转设定:**")
+                    st.warning(attraction.get("twist", ""))
+                if attraction.get("ending_tease"):
+                    st.markdown("**❓ 结尾悬念:**")
+                    st.error(attraction.get("ending_tease", ""))
 
             st.markdown("---")
-            with st.expander("📋 生成分镜（点击展开）", expanded=True):
-                st.text(st.session_state["shots_data"])
+            st.subheader(f"📋 分镜脚本 ({shots_json.get('total_duration', '?')}秒)")
+
+            # 整体信息
+            col_info1, col_info2 = st.columns(2)
+            with col_info1:
+                st.markdown(f"**🎬 风格:** {shots_json.get('style', '未知')}")
+            with col_info2:
+                st.markdown(f"**🎵 音乐:** {shots_json.get('music_suggestion', '未知')}")
+            st.markdown(f"**🌈 氛围:** {shots_json.get('atmosphere', '未知')}")
+
+            st.markdown("---")
+
+            # 分镜列表
+            shots = shots_json.get("shots", [])
+            for shot in shots:
+                with st.expander(f"📹 分镜{shot.get('shot_id', '')} [{shot.get('timestamp', '')}]"):
+                    col_s1, col_s2 = st.columns(2)
+                    with col_s1:
+                        st.markdown(f"**景别:** {shot.get('shot_type', '')}")
+                    with col_s2:
+                        st.markdown(f"**运镜:** {shot.get('camera_movement', '')}")
+
+                    st.markdown("**画面:**")
+                    st.write(shot.get('description', ''))
+
+                    if shot.get('narration'):
+                        st.markdown("**旁白:**")
+                        st.success(shot.get('narration', ''))
+
+            # JSON下载和复制
+            st.markdown("---")
+            col_json1, col_json2 = st.columns(2)
+            with col_json1:
+                st.json(shots_json)
+            with col_json2:
+                st.markdown("**复制JSON:**")
+                st.code(json.dumps(shots_json, ensure_ascii=False, indent=2), language="json")
 
 # ==================== 模式4: 仅生成旁白 ====================
 
