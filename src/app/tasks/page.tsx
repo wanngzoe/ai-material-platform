@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -59,20 +60,146 @@ function CreateTaskForm({
   onCreate: (task: Task) => void;
 }) {
   const [taskName, setTaskName] = useState("");
+  const [generationMode, setGenerationMode] = useState<"video" | "text" | "narration" | "creative">("video");
   const [referenceVideo, setReferenceVideo] = useState<string>("");
+  const [textPrompt, setTextPrompt] = useState<string>("");
+  const [originalNarration, setOriginalNarration] = useState<string>("");
+  const [creativeType, setCreativeType] = useState<string>("");
   const [model, setModel] = useState<string>("seedance_2.0");
   const [aspectRatio, setAspectRatio] = useState<string>("16:9");
-  const [resolution, setResolution] = useState<string>("1080p");
+  const [resolution, setResolution] = useState<string>("720p");
   const [generationCount, setGenerationCount] = useState<number>(3);
   const [character, setCharacter] = useState("");
   const [scene, setScene] = useState("");
   const [style, setStyle] = useState("");
   const [atmosphere, setAtmosphere] = useState("");
   const [others, setOthers] = useState("");
+  const [direction, setDirection] = useState("角色");
+
+  // 文字生成模式相关状态
+  const [textDescriptions, setTextDescriptions] = useState<string[]>([]);
+  const [derivedCount, setDerivedCount] = useState<number>(3);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  // 创意描述相关状态
+  const [creativeDescriptions, setCreativeDescriptions] = useState<string[]>([]);
+  const [creativeCount, setCreativeCount] = useState<number>(5);
+  const [isGeneratingCreative, setIsGeneratingCreative] = useState(false);
+  const [creativeEditingIndex, setCreativeEditingIndex] = useState<number | null>(null);
+  const [creativeEditValue, setCreativeEditValue] = useState("");
 
   // Handler to convert null to empty string
   const handleSelectChange = (setter: (v: string) => void) => (value: string | null) => {
     setter(value || "");
+  };
+
+  // Mock AI 生成衍生描述（模式二）
+  const handleGenerateDescriptions = () => {
+    if (!textPrompt.trim()) return;
+    setIsGenerating(true);
+
+    setTimeout(() => {
+      const mockDerivatives = [
+        `${textPrompt}，采用更加动感的镜头语言`,
+        `${textPrompt}，强调情感表达`,
+        `${textPrompt}，添加更多细节描写`,
+        `${textPrompt}，变换叙事视角`,
+        `${textPrompt}，融入更多情绪氛围`,
+        `${textPrompt}，使用电影级调色`,
+        `${textPrompt}，增加戏剧冲突`,
+        `${textPrompt}，采用写实风格`,
+        `${textPrompt}，添加浪漫元素`,
+        `${textPrompt}，突出主题内核`,
+      ];
+
+      const newDescriptions = mockDerivatives.slice(0, derivedCount);
+      setTextDescriptions([textPrompt, ...newDescriptions]);
+      setIsGenerating(false);
+    }, 1500);
+  };
+
+  // Mock AI 生成创意描述（模式四）
+  const handleGenerateCreativeDescriptions = () => {
+    if (!originalNarration.trim() || !creativeType) return;
+    setIsGeneratingCreative(true);
+
+    setTimeout(() => {
+      const creativePrompts: Record<string, string[]> = {
+        "搞笑": [
+          `【搞笑版】${originalNarration}，使用夸张的表情和动作`,
+          `【搞笑版】${originalNarration}，添加幽默的对白`,
+          `【搞笑版】${originalNarration}，反转剧情`,
+          `【搞笑版】${originalNarration}，使用方言配音`,
+          `【搞笑版】${originalNarration}，恶搞风格`,
+        ],
+        "感人": [
+          `【感人版】${originalNarration}，缓慢深情的镜头`,
+          `【感人版】${originalNarration}，添加回忆片段`,
+          `【感人版】${originalNarration}，温情的音乐`,
+          `【感人版】${originalNarration}，突出情感细节`,
+          `【感人版】${originalNarration}，煽情的配乐`,
+        ],
+        "热血": [
+          `【热血版】${originalNarration}，激昂的背景音乐`,
+          `【热血版】${originalNarration}，快速剪辑`,
+          `【热血版】${originalNarration}，添加战斗画面`,
+          `【热血版】${originalNarration}，突出主角光环`,
+          `【热血版】${originalNarration}，震撼的特效`,
+        ],
+        "悬疑": [
+          `【悬疑版】${originalNarration}，阴暗的色调`,
+          `【悬疑版】${originalNarration}，紧张的配乐`,
+          `【悬疑版】${originalNarration}，隐藏关键信息`,
+          `【悬疑版】${originalNarration}，暗示结局`,
+          `【悬疑版】${originalNarration}，神秘的气氛`,
+        ],
+        "浪漫": [
+          `【浪漫版】${originalNarration}，唯美的画面`,
+          `【浪漫版】${originalNarration}，粉色滤镜`,
+          `【浪漫版】${originalNarration}，甜蜜的互动`,
+          `【浪漫版】${originalNarration}，夕阳下的场景`,
+          `【浪漫版】${originalNarration}，心动的配乐`,
+        ],
+      };
+
+      const results = creativePrompts[creativeType] || creativePrompts["搞笑"];
+      setCreativeDescriptions(results.slice(0, creativeCount));
+      setIsGeneratingCreative(false);
+    }, 1500);
+  };
+
+  const handleAddDescription = () => {
+    setTextDescriptions([...textDescriptions, ""]);
+    setEditingIndex(textDescriptions.length);
+    setEditValue("");
+  };
+
+  const handleUpdateDescription = (index: number, value: string) => {
+    const updated = [...textDescriptions];
+    updated[index] = value;
+    setTextDescriptions(updated);
+  };
+
+  const handleDeleteDescription = (index: number) => {
+    setTextDescriptions(textDescriptions.filter((_, i) => i !== index));
+  };
+
+  const handleAddCreativeDescription = () => {
+    setCreativeDescriptions([...creativeDescriptions, ""]);
+    setCreativeEditingIndex(creativeDescriptions.length);
+    setCreativeEditValue("");
+  };
+
+  const handleUpdateCreativeDescription = (index: number, value: string) => {
+    const updated = [...creativeDescriptions];
+    updated[index] = value;
+    setCreativeDescriptions(updated);
+  };
+
+  const handleDeleteCreativeDescription = (index: number) => {
+    setCreativeDescriptions(creativeDescriptions.filter((_, i) => i !== index));
   };
 
   const handleSubmit = () => {
@@ -85,6 +212,9 @@ function CreateTaskForm({
       status: "排队中",
       createTime: new Date().toISOString().slice(0, 16).replace("T", " "),
       endTime: "-",
+      generationMode,
+      referenceVideo: generationMode === "video" ? referenceVideo : undefined,
+      textPrompt: generationMode === "text" ? (textDescriptions.length > 0 ? textDescriptions[0] : textPrompt) : undefined,
     };
 
     onCreate(newTask);
@@ -106,34 +236,296 @@ function CreateTaskForm({
               className="mt-1"
             />
           </div>
-          <div>
-            <Label>参考视频</Label>
-            <Select value={referenceVideo} onValueChange={handleSelectChange(setReferenceVideo)}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="选择参考视频" />
-              </SelectTrigger>
-              <SelectContent>
-                {materials.前贴.map((video) => (
-                  <SelectItem key={video.id} value={video.id}>
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={video.thumbnail}
-                        alt={video.name}
-                        className="w-16 h-10 object-cover rounded"
-                      />
-                      <span>{video.name}</span>
+          {/* 生成模式选择 */}
+          {taskType === "前贴生成" && (
+            <div>
+              <Label>生成模式</Label>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setGenerationMode("video")}
+                  className={`py-3 px-4 rounded-lg border-2 transition-colors ${
+                    generationMode === "video"
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <div className="font-medium">📹 参考视频生成</div>
+                  <div className="text-xs text-gray-500 mt-1">保留旁白故事</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGenerationMode("text")}
+                  className={`py-3 px-4 rounded-lg border-2 transition-colors ${
+                    generationMode === "text"
+                      ? "border-purple-500 bg-purple-50 text-purple-700"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <div className="font-medium">✏️ 文字生成视频</div>
+                  <div className="text-xs text-gray-500 mt-1">输入描述生成</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGenerationMode("narration")}
+                  className={`py-3 px-4 rounded-lg border-2 transition-colors ${
+                    generationMode === "narration"
+                      ? "border-green-500 bg-green-50 text-green-700"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <div className="font-medium">🎬 仅生成旁白</div>
+                  <div className="text-xs text-gray-500 mt-1">保留画面</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGenerationMode("creative")}
+                  className={`py-3 px-4 rounded-lg border-2 transition-colors ${
+                    generationMode === "creative"
+                      ? "border-orange-500 bg-orange-50 text-orange-700"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <div className="font-medium">💡 创意描述生成</div>
+                  <div className="text-xs text-gray-500 mt-1">AI创意描述</div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 参考视频选择 - 视频模式或旁白模式显示 */}
+          {(generationMode === "video" || generationMode === "narration") && (
+            <div>
+              <Label>参考视频</Label>
+              <Select value={referenceVideo} onValueChange={handleSelectChange(setReferenceVideo)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="选择参考视频" />
+                </SelectTrigger>
+                <SelectContent>
+                  {materials.前贴.map((video) => (
+                    <SelectItem key={video.id} value={video.id}>
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={video.thumbnail}
+                          alt={video.name}
+                          className="w-16 h-10 object-cover rounded"
+                        />
+                        <span>{video.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* 模式三：旁白生成 - 原文案输入 */}
+          {generationMode === "narration" && (
+            <div>
+              <Label>原文案</Label>
+              <Textarea
+                placeholder="请输入原始旁白文案..."
+                value={originalNarration}
+                onChange={(e) => setOriginalNarration(e.target.value)}
+                rows={3}
+                className="mt-1"
+              />
+            </div>
+          )}
+
+          {/* 模式四：创意描述 - 原文案和创意类型 */}
+          {generationMode === "creative" && (
+            <>
+              <div>
+                <Label>原文案</Label>
+                <Textarea
+                  placeholder="请输入原始旁白文案..."
+                  value={originalNarration}
+                  onChange={(e) => setOriginalNarration(e.target.value)}
+                  rows={3}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>创意类型</Label>
+                <Select value={creativeType} onValueChange={handleSelectChange(setCreativeType)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="选择创意类型" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="搞笑">搞笑</SelectItem>
+                    <SelectItem value="感人">感人</SelectItem>
+                    <SelectItem value="热血">热血</SelectItem>
+                    <SelectItem value="悬疑">悬疑</SelectItem>
+                    <SelectItem value="浪漫">浪漫</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+
+          {/* 文字输入 - 当选择文字生成模式时显示 */}
+          {generationMode === "text" && (
+            <div>
+              <Label>基础视频描述</Label>
+              <Textarea
+                placeholder="请详细描述你想要生成的视频内容..."
+                value={textPrompt}
+                onChange={(e) => setTextPrompt(e.target.value)}
+                rows={3}
+                className="mt-1"
+              />
+            </div>
+          )}
+
+          {/* 文字生成模式：衍生描述管理 */}
+          {generationMode === "text" && (
+            <div className="border rounded-lg p-4">
+              <h3 className="text-lg font-semibold mb-4">衍生描述</h3>
+              <div className="flex items-center gap-4 mb-4">
+                <Label className="whitespace-nowrap">衍生数量: {derivedCount}</Label>
+                <Slider
+                  value={[derivedCount]}
+                  onValueChange={(val) => setDerivedCount(Array.isArray(val) ? val[0] : val)}
+                  max={10}
+                  min={1}
+                  step={1}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleGenerateDescriptions}
+                  disabled={!textPrompt.trim() || isGenerating}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  {isGenerating ? "生成中..." : "AI生成"}
+                </Button>
+              </div>
+
+              {/* 描述列表 */}
+              {textDescriptions.length > 0 && (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {textDescriptions.map((desc, index) => (
+                    <div key={index} className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-500 mt-2 w-6">{index + 1}.</span>
+                      {editingIndex === index ? (
+                        <Textarea
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={() => {
+                            handleUpdateDescription(index, editValue);
+                            setEditingIndex(null);
+                          }}
+                          rows={2}
+                          className="flex-1"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          className="flex-1 text-sm py-1 px-2 cursor-pointer hover:bg-gray-100 rounded"
+                          onClick={() => {
+                            setEditingIndex(index);
+                            setEditValue(desc);
+                          }}
+                        >
+                          {desc}
+                        </div>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-600"
+                        onClick={() => handleDeleteDescription(index)}
+                      >
+                        ✕
+                      </Button>
                     </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                  ))}
+                </div>
+              )}
+
+              <Button variant="outline" size="sm" onClick={handleAddDescription} className="mt-3">
+                + 添加描述
+              </Button>
+            </div>
+          )}
+
+          {/* 模式四：创意描述生成 */}
+          {generationMode === "creative" && (
+            <div className="border rounded-lg p-4">
+              <h3 className="text-lg font-semibold mb-4">创意描述</h3>
+              <div className="flex items-center gap-4 mb-4">
+                <Label className="whitespace-nowrap">生成数量: {creativeCount}</Label>
+                <Slider
+                  value={[creativeCount]}
+                  onValueChange={(val) => setCreativeCount(Array.isArray(val) ? val[0] : val)}
+                  max={10}
+                  min={1}
+                  step={1}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleGenerateCreativeDescriptions}
+                  disabled={!originalNarration.trim() || !creativeType || isGeneratingCreative}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  {isGeneratingCreative ? "生成中..." : "AI生成"}
+                </Button>
+              </div>
+
+              {/* 创意描述列表 */}
+              {creativeDescriptions.length > 0 && (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {creativeDescriptions.map((desc, index) => (
+                    <div key={index} className="flex items-start gap-2 p-2 bg-orange-50 rounded-lg">
+                      <span className="text-sm text-orange-600 mt-2 w-6">{index + 1}.</span>
+                      {creativeEditingIndex === index ? (
+                        <Textarea
+                          value={creativeEditValue}
+                          onChange={(e) => setCreativeEditValue(e.target.value)}
+                          onBlur={() => {
+                            handleUpdateCreativeDescription(index, creativeEditValue);
+                            setCreativeEditingIndex(null);
+                          }}
+                          rows={2}
+                          className="flex-1"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          className="flex-1 text-sm py-1 px-2 cursor-pointer hover:bg-orange-100 rounded"
+                          onClick={() => {
+                            setCreativeEditingIndex(index);
+                            setCreativeEditValue(desc);
+                          }}
+                        >
+                          {desc}
+                        </div>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-600"
+                        onClick={() => handleDeleteCreativeDescription(index)}
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <Button variant="outline" size="sm" onClick={handleAddCreativeDescription} className="mt-3">
+                + 添加描述
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 生成参数 */}
-      <div>
-        <h3 className="text-lg font-semibold mb-4">生成参数</h3>
+      {/* 生成参数 - 仅视频和文字模式显示 */}
+      {(generationMode === "video" || generationMode === "text") && (
+        <div>
+          <h3 className="text-lg font-semibold mb-4">生成参数</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label>模型</Label>
@@ -173,84 +565,66 @@ function CreateTaskForm({
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label>生成数量: {generationCount}</Label>
-            <Slider
-              value={[generationCount]}
-              onValueChange={(val) => setGenerationCount(Array.isArray(val) ? val[0] : val)}
-              max={10}
-              min={1}
-              step={1}
-              className="mt-3"
-            />
-          </div>
+          {/* 生成数量 - 仅视频模式显示 */}
+          {generationMode === "video" && (
+            <div>
+              <Label>生成数量: {generationCount}</Label>
+              <Slider
+                value={[generationCount]}
+                onValueChange={(val) => setGenerationCount(Array.isArray(val) ? val[0] : val)}
+                max={10}
+                min={1}
+                step={1}
+                className="mt-3"
+              />
+            </div>
+          )}
+          {/* 任务数量提示 - 仅文字模式显示 */}
+          {generationMode === "text" && textDescriptions.length > 0 && (
+            <div className="flex items-center">
+              <span className="text-sm text-gray-500">将创建 {textDescriptions.length} 个任务</span>
+            </div>
+          )}
         </div>
-      </div>
+        </div>
+      )}
 
-      {/* 详细参数 */}
-      <div>
-        <h3 className="text-lg font-semibold mb-4">详细参数</h3>
-        <div className="space-y-4">
-          <div>
-            <Label>角色</Label>
-            <Textarea
-              placeholder="描述角色特征"
-              value={character}
-              onChange={(e) => setCharacter(e.target.value)}
-              className="mt-1"
-              rows={2}
-            />
-          </div>
-          <div>
-            <Label>场景</Label>
-            <Textarea
-              placeholder="描述场景环境"
-              value={scene}
-              onChange={(e) => setScene(e.target.value)}
-              className="mt-1"
-              rows={2}
-            />
-          </div>
-          <div>
-            <Label>画风</Label>
-            <Textarea
-              placeholder="描述画风要求"
-              value={style}
-              onChange={(e) => setStyle(e.target.value)}
-              className="mt-1"
-              rows={2}
-            />
-          </div>
-          <div>
-            <Label>氛围</Label>
-            <Textarea
-              placeholder="描述氛围要求"
-              value={atmosphere}
-              onChange={(e) => setAtmosphere(e.target.value)}
-              className="mt-1"
-              rows={2}
-            />
-          </div>
-          <div>
-            <Label>其他</Label>
-            <Textarea
-              placeholder="其他补充说明"
-              value={others}
-              onChange={(e) => setOthers(e.target.value)}
-              className="mt-1"
-              rows={2}
-            />
+      {/* 变更方向 - 仅视频模式显示 */}
+      {generationMode === "video" && (
+        <div className="border rounded-lg p-4">
+          <h3 className="text-lg font-semibold mb-4">变更方向</h3>
+          <div className="flex flex-wrap gap-2">
+            {["角色", "场景", "画风", "氛围", "其他"].map((v) => (
+              <button key={v} type="button" onClick={() => setDirection(v)} className={`px-4 py-2 rounded-full text-sm border ${direction === v ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"}`}>{v}</button>
+            ))}
           </div>
         </div>
-      </div>
+      )}
 
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>
           取消
         </Button>
-        <Button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700">
-          创建任务
-        </Button>
+        {generationMode === "video" && (
+          <Button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700">
+            创建任务
+          </Button>
+        )}
+        {generationMode === "text" && (
+          <Button onClick={handleSubmit} className="bg-purple-600 hover:bg-purple-700">
+            创建任务
+          </Button>
+        )}
+        {generationMode === "narration" && (
+          <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700">
+            生成旁白
+          </Button>
+        )}
+        {generationMode === "creative" && (
+          <Button onClick={handleSubmit} className="bg-orange-600 hover:bg-orange-700">
+            生成创意描述
+          </Button>
+        )}
       </DialogFooter>
     </div>
   );
@@ -328,40 +702,31 @@ function TaskTable({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-gray-50">
-              <TableHead>任务ID</TableHead>
-              <TableHead>任务名称</TableHead>
-              <TableHead>任务类型</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>创建时间</TableHead>
-              <TableHead>结束时间</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredTasks.map((task) => (
-              <TableRow
-                key={task.id}
-                className={`hover:bg-gray-50 cursor-pointer ${
-                  taskType === "前贴生成" ? "hover:bg-blue-50" : ""
-                }`}
-                onClick={() => handleRowClick(task)}
-              >
-                <TableCell className="font-medium">{task.id}</TableCell>
-                <TableCell>{task.name}</TableCell>
-                <TableCell>{task.type}</TableCell>
-                <TableCell>
-                  <StatusBadge status={task.status} />
-                </TableCell>
-                <TableCell className="text-gray-500">{task.createTime}</TableCell>
-                <TableCell className="text-gray-500">{task.endTime}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      {/* Card List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredTasks.map((task) => (
+          <Card
+            key={task.id}
+            className={`cursor-pointer hover:shadow-md transition-shadow ${
+              taskType === "前贴生成" ? "hover:border-blue-300" : ""
+            }`}
+            onClick={() => handleRowClick(task)}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <div className="font-medium text-gray-900">{task.name}</div>
+                  <div className="text-sm text-gray-500">{task.id}</div>
+                </div>
+                <StatusBadge status={task.status} />
+              </div>
+              <div className="flex items-center justify-between text-sm text-gray-500">
+                <div>{task.type}</div>
+                <div>{task.createTime}</div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Pagination */}
