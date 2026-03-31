@@ -1631,8 +1631,16 @@ function ResultCard({ result, index, onDelete, onEdit, onEditV2, onCopy }: { res
                 <div className="text-sm bg-gray-50 p-2 rounded line-clamp-3">{result.prompt}</div>
               </div>
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" size="sm" className="bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100" onClick={() => onEditV2(result)}>编辑</Button>
                 <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={() => onDelete(result.id)}>删除</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopy}
+                  className={copied ? "text-green-600 border-green-200 bg-green-50" : ""}
+                >
+                  {copied ? "已复制" : "复制"}
+                </Button>
+                <Button variant="outline" size="sm" className="bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100" onClick={() => onEditV2(result)}>编辑</Button>
               </div>
             </>
           )}
@@ -1644,8 +1652,16 @@ function ResultCard({ result, index, onDelete, onEdit, onEditV2, onCopy }: { res
                 <div className="text-sm bg-gray-50 p-2 rounded line-clamp-3">{result.prompt}</div>
               </div>
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" size="sm" className="bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100" onClick={() => onEditV2(result)}>编辑</Button>
                 <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={() => onDelete(result.id)}>删除</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopy}
+                  className={copied ? "text-green-600 border-green-200 bg-green-50" : ""}
+                >
+                  {copied ? "已复制" : "复制"}
+                </Button>
+                <Button variant="outline" size="sm" className="bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100" onClick={() => onEditV2(result)}>编辑</Button>
               </div>
             </>
           )}
