@@ -552,6 +552,7 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
   const [generatingShotId, setGeneratingShotId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [historyShotId, setHistoryShotId] = useState<string | null>(null);
+  const [restoreConfirm, setRestoreConfirm] = useState<{ shotId: string; item: any } | null>(null);
   const [expandedPrompt, setExpandedPrompt] = useState<string | null>(null);
   const [previewVideo, setPreviewVideo] = useState<string | null>(null);
   const [showImagePicker, setShowImagePicker] = useState(false);
@@ -971,10 +972,21 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* 恢复历史版本确认对话框 */}
+      <Dialog open={!!restoreConfirm} onOpenChange={() => setRestoreConfirm(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>恢复此版本？</DialogTitle><DialogDescription>确定要恢复该历史版本吗？当前内容将被替换。</DialogDescription></DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRestoreConfirm(null)}>取消</Button>
+            <Button onClick={() => { if (restoreConfirm) { updateShot(restoreConfirm.shotId, { prompt: restoreConfirm.item.prompt, videoUrl: restoreConfirm.item.videoUrl }); setRestoreConfirm(null); setHistoryShotId(null); } }} className="bg-blue-500 hover:bg-blue-600 text-white">确认恢复</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* 历史版本对话框 */}
       <Dialog open={!!historyShotId} onOpenChange={() => setHistoryShotId(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>历史版本</DialogTitle></DialogHeader>
+          <div className="text-xs text-gray-500 mb-2">最多保存10条历史记录，超出后将自动覆盖最旧的记录</div>
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {historyShotId && shots.find(s => s.id === historyShotId)?.history?.map((item, idx) => (
               <div key={item.id} className="flex gap-4 p-3 border rounded-lg hover:bg-gray-50">
@@ -989,7 +1001,7 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
                   {expandedPrompt === item.id && <div className="mt-2 p-2 bg-gray-100 rounded text-xs whitespace-pre-wrap">{item.prompt}</div>}
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Button variant="outline" size="sm" onClick={() => { if (historyShotId) { updateShot(historyShotId, { prompt: item.prompt, videoUrl: item.videoUrl }); setHistoryShotId(null); } }}>恢复此版本</Button>
+                  <Button variant="outline" size="sm" onClick={() => historyShotId && setRestoreConfirm({ shotId: historyShotId, item })}>恢复此版本</Button>
                   <Button variant="ghost" size="sm" className="text-gray-500">复制提示词</Button>
                 </div>
               </div>

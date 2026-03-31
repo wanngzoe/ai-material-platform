@@ -106,8 +106,6 @@ const initialState: FormState = {
   direction: "角色",
   splitByShot: false,
   textPrompt: "",
-  textDescriptions: [],
-  derivedCount: 3,
   originalNarration: "",
   creativeType: "",
   creativeDescriptions: [],
@@ -502,95 +500,6 @@ function CreateTaskForm({
                 rows={3}
                 className="mt-1"
               />
-            </div>
-          )}
-
-          {/* 文字生成模式：衍生描述管理 */}
-          {generationMode === "text" && (
-            <div className={`border rounded-xl p-4 bg-gradient-to-br from-purple-50 to-white transition-all duration-150 ${modeTransitioning ? "opacity-0 transform translate-y-2" : "opacity-100"}`}>
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-purple-500" />
-                衍生描述
-              </h3>
-              <div className="flex items-center gap-4 mb-4">
-                <Label className="whitespace-nowrap text-sm">衍生数量: {state.derivedCount}</Label>
-                <input
-                  type="range"
-                  min={1}
-                  max={10}
-                  step={1}
-                  value={state.derivedCount}
-                  onChange={(e) => dispatch({ type: "SET_FIELD", field: "derivedCount", value: parseInt(e.target.value) })}
-                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
-                />
-                <Button
-                  onClick={handleGenerateDescriptions}
-                  disabled={!state.textPrompt.trim() || isGenerating}
-                  className="bg-purple-600 hover:bg-purple-700 gap-2"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      生成中
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4" />
-                      AI生成
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* 描述列表 */}
-              {state.textDescriptions.length > 0 && (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {state.textDescriptions.map((desc, index) => (
-                    <div key={index} className="group flex items-start gap-2 p-3 bg-white rounded-lg border border-purple-100 hover:border-purple-200 transition-colors">
-                      <span className="text-sm text-purple-600 font-medium mt-2 w-6">{index + 1}.</span>
-                      {editingIndex === index ? (
-                        <Textarea
-                          value={editValue}
-                          onChange={(e) => dispatch({ type: "SET_FIELD", field: "editValue", value: e.target.value })}
-                          onBlur={() => {
-                            dispatch({ type: "UPDATE_TEXT_DESCRIPTION", index, value: editValue });
-                          }}
-                          rows={2}
-                          className="flex-1"
-                          autoFocus
-                        />
-                      ) : (
-                        <div
-                          className="flex-1 text-sm py-1 px-2 cursor-pointer hover:bg-purple-50 rounded transition-colors"
-                          onClick={() => {
-                            dispatch({ type: "SET_FIELD", field: "editingIndex", value: index });
-                            dispatch({ type: "SET_FIELD", field: "editValue", value: desc });
-                          }}
-                        >
-                          {desc}
-                        </div>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => dispatch({ type: "DELETE_TEXT_DESCRIPTION", index })}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => dispatch({ type: "ADD_TEXT_DESCRIPTION" })}
-                className="mt-3 border-purple-200 text-purple-600 hover:bg-purple-50 gap-1"
-              >
-                <Plus className="w-4 h-4" /> 添加描述
-              </Button>
             </div>
           )}
 
