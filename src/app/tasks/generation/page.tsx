@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,7 @@ const mockTask: GenerationTask = {
   results: [
     {
       id: "result-1",
+      name: "结果1",
       status: "completed",
       prompt: "年轻女性在霓虹灯下的城市街道上自信行走，展现活力向上的氛围...",
       videoUrl: "https://picsum.photos/seed/v1/640/360",
@@ -67,12 +68,14 @@ const mockTask: GenerationTask = {
     },
     {
       id: "result-2",
+      name: "结果2",
       status: "generating",
       prompt: "年轻女性在霓虹灯下的城市街道上自信行走，展现活力向上的氛围...",
       progress: 65,
     },
     {
       id: "result-3",
+      name: "结果3",
       status: "pending",
       prompt: "年轻女性在霓虹灯下的城市街道上自信行走，展现活力向上的氛围...",
     },
@@ -559,6 +562,7 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
     "https://picsum.photos/seed/ref2/200/200",
     "https://picsum.photos/seed/ref3/200/200",
   ]);
+  const [voiceRemovalOpen, setVoiceRemovalOpen] = useState(false);
 
   const handleVideoModelChange = (value: string | null) => setVideoModel(value || "seedance_2.0");
   const handleImageModelChange = (value: string | null) => setImageModel(value || "jimeng_5.0");
@@ -953,9 +957,11 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
         {/* 抽屉底部操作栏 */}
         <div className="border-t bg-white px-6 py-4 flex justify-end items-center gap-3">
           <Button variant="outline" onClick={onClose}>取消</Button>
-          <Button className="bg-orange-500 hover:bg-orange-600">去配音</Button>
+          <Button className="bg-orange-500 hover:bg-orange-600" onClick={() => setVoiceRemovalOpen(true)}>去配音</Button>
         </div>
       </SheetContent>
+      {/* 去配音抽屉 */}
+      <VoiceRemovalDrawer open={voiceRemovalOpen} onClose={() => setVoiceRemovalOpen(false)} result={result} />
       <Dialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>删除分镜？</DialogTitle><DialogDescription>删除后，该分镜下的视频、提示词等素材将被清空且无法找回。</DialogDescription></DialogHeader>
@@ -1016,7 +1022,530 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
   );
 }
 
-function ResultCard({ result, index, onDelete, onEdit, onEditV2 }: { result: GenerationResult; index: number; onDelete: (id: string) => void; onEdit: (result: GenerationResult) => void; onEditV2: (result: GenerationResult) => void; }) {
+// 去配音抽屉组件
+function VoiceRemovalDrawer({ open, onClose, result }: {
+  open: boolean;
+  onClose: () => void;
+  result: GenerationResult;
+}) {
+  const [activeTab, setActiveTab] = useState<"original" | "custom">("original");
+  const [customNarration, setCustomNarration] = useState("");
+  const [aiOptions, setAiOptions] = useState<{ text: string }[]>([]);
+  const [hasGeneratedAi, setHasGeneratedAi] = useState(false);
+  const [aiHistory, setAiHistory] = useState<{ text: string; time: string }[]>([]);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [selectedNarration, setSelectedNarration] = useState(result.narrationText || "");
+  const [voice, setVoice] = useState("女声-活泼");
+  const [voiceSpeed, setVoiceSpeed] = useState("1.0x");
+  const [emotion, setEmotion] = useState("开心");
+  const [subtitleStyle, setSubtitleStyle] = useState<"with" | "without">("with");
+  const [bgMusic, setBgMusic] = useState<File | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // 切换Tab时，如果自定义旁白为空则带入原文案
+  useEffect(() => {
+    if (activeTab === "custom" && !customNarration && result.narrationText) {
+      setCustomNarration(result.narrationText);
+    }
+  }, [activeTab]);
+
+  // 音色选项
+  const voiceOptions = [
+    { value: "女声-活泼", label: "女声-活泼" },
+    { value: "女声-温柔", label: "女声-温柔" },
+    { value: "女声-知性", label: "女声-知性" },
+    { value: "男声-磁性的", label: "男声-磁性的" },
+    { value: "男声-低沉", label: "男声-低沉" },
+    { value: "童声", label: "童声" },
+  ];
+
+  // 语速选项
+  const speedOptions = ["0.5x", "0.75x", "1.0x", "1.25x", "1.5x", "2.0x"];
+
+  // 情绪选项
+  const emotionOptions = ["开心", "悲伤", "激动", "平静", "紧张", "搞笑"];
+
+  // 旁白风格类型
+  const narrationStyles = ["情感型", "叙事型", "搞笑型", "悬疑型", "热血型", "浪漫型"];
+
+  // 处理拖拽上传
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const files = e.dataTransfer.files;
+    if (files.length > 0 && files[0].type.startsWith("audio/")) {
+      setBgMusic(files[0]);
+    }
+  };
+
+  // 显示toast提示
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 2000);
+  };
+
+  // 模拟AI生成3条旁白
+  const handleAIGenerate = () => {
+    if (!result.narrationText?.trim()) return;
+    setIsGenerating(true);
+
+    setTimeout(() => {
+      // 保存当前选项到历史
+      if (aiOptions.length > 0) {
+        const newHistory = aiOptions.map(opt => ({
+          text: opt.text,
+          time: new Date().toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
+        }));
+        setAiHistory(prev => [...newHistory, ...prev]);
+      }
+
+      // 生成3条旁白
+      const baseText = result.narrationText || "";
+      const newOptions = [
+        { text: `${baseText}（版本1：情感增强）` },
+        { text: `${baseText}（版本2：叙事优化）` },
+        { text: `${baseText}（版本3：趣味改编）` },
+      ];
+      setAiOptions(newOptions);
+      setHasGeneratedAi(true);
+      setIsGenerating(false);
+    }, 1500);
+  };
+
+  // 获取当前Tab的旁白文本
+  const getCurrentNarration = () => {
+    if (activeTab === "original") return result.narrationText || "";
+    if (activeTab === "custom") return customNarration;
+    return "";
+  };
+
+  // 处理保存
+  const handleSave = () => {
+    // 保存逻辑
+    console.log({
+      narrationType: activeTab,
+      narrationText: selectedNarration,
+      voice,
+      voiceSpeed,
+      emotion,
+      subtitleStyle,
+      bgMusic: bgMusic?.name,
+    });
+    onClose();
+  };
+
+  if (!open) return null;
+
+  return (
+    <Sheet open={open} onOpenChange={onClose}>
+      <SheetContent className="w-[95%] !max-w-[95%] flex flex-col">
+        <SheetHeader className="px-6 py-4 border-b">
+          <SheetTitle>去配音</SheetTitle>
+        </SheetHeader>
+
+        <div className="flex flex-1 overflow-hidden">
+          {/* 左侧：视频预览 */}
+          <div className="w-2/5 border-r bg-gray-50 flex items-center justify-center p-4">
+            <div className="aspect-[9/16] w-full max-w-[280px] bg-black rounded-lg overflow-hidden shadow-lg">
+              {result.videoUrl ? (
+                <video
+                  src={result.videoUrl}
+                  className="w-full h-full object-cover"
+                  controls
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  暂无视频预览
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 右侧：编辑区 */}
+          <div className="flex-1 overflow-y-auto">
+            {/* 第一区块：旁白文案 */}
+            <div className="p-5 border-b border-gray-100">
+              <h4 className="font-medium text-gray-900 flex items-center gap-2 mb-4">
+                <span className="w-1 h-4 bg-blue-500 rounded-full"></span>
+                旁白文案
+              </h4>
+
+              {/* Tabs */}
+              <div className="flex gap-3 mb-4">
+                <button
+                  onClick={() => setActiveTab("original")}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    activeTab === "original"
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                      : "border-gray-200 hover:border-gray-300 text-gray-600"
+                  }`}
+                >
+                  {activeTab === "original" && <span className="w-2 h-2 bg-blue-500 rounded-full"></span>}
+                  原旁白
+                  {selectedNarration === result.narrationText && (
+                    <span className="text-xs text-green-600 ml-1">✓</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveTab("custom")}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    activeTab === "custom"
+                      ? "border-purple-500 bg-purple-50 text-purple-700"
+                      : "border-gray-200 hover:border-gray-300 text-gray-600"
+                  }`}
+                >
+                  {activeTab === "custom" && <span className="w-2 h-2 bg-purple-500 rounded-full"></span>}
+                  自定义旁白
+                  {activeTab === "custom" && customNarration && (
+                    <span className="text-xs text-green-600 ml-1">✓</span>
+                  )}
+                </button>
+              </div>
+
+              {/* 原旁白内容 */}
+              {activeTab === "original" && (
+                <div
+                  onClick={() => setSelectedNarration(result.narrationText || "")}
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                    selectedNarration === result.narrationText
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:border-blue-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-gray-500">原文案</span>
+                    <span className="text-xs text-gray-400">{result.narrationText?.length || 0} 字</span>
+                  </div>
+                  <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {result.narrationText || "暂无原旁白文案"}
+                  </div>
+                </div>
+              )}
+
+              {/* 自定义旁白内容 */}
+              {activeTab === "custom" && (
+                <div className="space-y-3">
+                  {/* AI生成按钮 + 历史记录按钮 */}
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleAIGenerate}
+                      disabled={!result.narrationText?.trim() || isGenerating}
+                      className="flex-1 bg-purple-600 hover:bg-purple-700"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></span>
+                          AI生成中...
+                        </>
+                      ) : (
+                        <>
+                          <span className="mr-1">✨</span>
+                          {hasGeneratedAi ? "重新生成" : "基于原旁白，AI生成3条旁白"}
+                        </>
+                      )}
+                    </Button>
+                    {aiHistory.length > 0 && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowHistoryModal(true)}
+                        className="border-purple-300 text-purple-600 hover:bg-purple-50"
+                      >
+                        历史记录 ({aiHistory.length})
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* AI结果列表 - 可滚动区域 */}
+                  {aiOptions.length > 0 && (
+                    <div className="max-h-64 overflow-y-auto space-y-2 border border-gray-100 rounded-lg p-2">
+                      {aiOptions.map((opt, idx) => (
+                        <div
+                          key={`current-${idx}`}
+                          className={`p-3 rounded-lg border-2 transition-all ${
+                            customNarration === opt.text
+                              ? "border-green-500 bg-green-50"
+                              : "border-gray-200 hover:border-purple-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium text-purple-600">结果{idx + 1}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-400">{opt.text.length} 字</span>
+                              <span className="text-xs text-purple-600 hover:text-purple-700 cursor-pointer"
+                                onClick={() => { setCustomNarration(opt.text); showToast("已复制到编辑框"); }}>
+                                复制
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-600 whitespace-pre-wrap">
+                            {opt.text}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 自定义编辑框 */}
+                  <div className="relative">
+                    <Textarea
+                      value={customNarration}
+                      onChange={(e) => setCustomNarration(e.target.value)}
+                      placeholder="点击上方AI结果复制，或手动输入..."
+                      rows={4}
+                      className="resize-none pr-12"
+                    />
+                    <span className="absolute bottom-3 right-3 text-xs text-gray-400">
+                      {customNarration.length} 字
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* 历史记录弹框 */}
+              <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+                <DialogContent className="max-w-lg max-h-[70vh] overflow-hidden flex flex-col">
+                  <DialogHeader>
+                    <DialogTitle>历史记录 ({aiHistory.length})</DialogTitle>
+                  </DialogHeader>
+                  <div className="flex-1 overflow-y-auto space-y-2">
+                    {aiHistory.length > 0 ? (
+                      aiHistory.map((item, idx) => (
+                        <div
+                          key={`history-modal-${idx}`}
+                          className={`p-3 rounded-lg border transition-all ${
+                            customNarration === item.text
+                              ? "border-green-500 bg-green-50"
+                              : "border-gray-200 hover:border-purple-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-gray-500">历史版本 {item.text.length}字</span>
+                            <span className="text-xs text-gray-400">{item.time}</span>
+                          </div>
+                          <div className="text-xs text-gray-600 whitespace-pre-wrap line-clamp-3 mb-2">
+                            {item.text}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setCustomNarration(item.text);
+                              setShowHistoryModal(false);
+                              showToast("已复制到编辑框");
+                            }}
+                            className="h-7 text-xs w-full border-purple-300 text-purple-600 hover:bg-purple-50"
+                          >
+                            复制到编辑框
+                          </Button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-gray-400">
+                        暂无历史记录
+                      </div>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {/* 第二区块：配音参数 */}
+            <div className="p-5 border-b border-gray-100 bg-gray-50/50">
+              <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+                <span className="w-1 h-4 bg-green-500 rounded-full"></span>
+                配音设置
+              </h4>
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-gray-500">音色</Label>
+                    <Select value={voice} onValueChange={(v) => setVoice(v || "")}>
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {voiceOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-gray-500">倍速</Label>
+                    <Select value={voiceSpeed} onValueChange={(v) => setVoiceSpeed(v || "1.0x")}>
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {speedOptions.map((speed) => (
+                          <SelectItem key={speed} value={speed}>
+                            {speed}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-gray-500">情绪</Label>
+                    <Select value={emotion} onValueChange={(v) => setEmotion(v || "开心")}>
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {emotionOptions.map((emo) => (
+                          <SelectItem key={emo} value={emo}>
+                            {emo}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button className="w-full bg-green-600 hover:bg-green-700 h-10">
+                  <span className="mr-2">🎵</span>
+                  生成配音
+                </Button>
+              </div>
+            </div>
+
+            {/* 第三区块：视频效果 */}
+            <div className="p-5">
+              <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+                <span className="w-1 h-4 bg-orange-500 rounded-full"></span>
+                视频效果
+              </h4>
+              <div className="space-y-4">
+                {/* 字幕样式 */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500">字幕</Label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSubtitleStyle("with")}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg border-2 transition-all text-sm ${
+                        subtitleStyle === "with"
+                          ? "border-orange-500 bg-orange-50 text-orange-700"
+                          : "border-gray-200 hover:border-gray-300 text-gray-600"
+                      }`}
+                    >
+                      <span>📝</span>
+                      <span className="font-medium">有字幕</span>
+                    </button>
+                    <button
+                      onClick={() => setSubtitleStyle("without")}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg border-2 transition-all text-sm ${
+                        subtitleStyle === "without"
+                          ? "border-orange-500 bg-orange-50 text-orange-700"
+                          : "border-gray-200 hover:border-gray-300 text-gray-600"
+                      }`}
+                    >
+                      <span>📄</span>
+                      <span className="font-medium">无字幕</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 背景音乐 */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500">背景音乐</Label>
+                  <div
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
+                      bgMusic
+                        ? "border-green-300 bg-green-50"
+                        : "border-gray-200 hover:border-orange-300 hover:bg-orange-50"
+                    }`}
+                  >
+                    {bgMusic ? (
+                      <div className="flex items-center justify-center gap-3">
+                        <span className="text-2xl">🎵</span>
+                        <div className="text-left flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 text-sm truncate">{bgMusic.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {(bgMusic.size / 1024 / 1024).toFixed(2)} MB
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setBgMusic(null)}
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-4">
+                        <span className="text-3xl">🎧</span>
+                        <div className="text-left">
+                          <div className="text-sm text-gray-600">拖拽音频到此处</div>
+                          <div className="text-xs text-gray-400 mt-0.5">或</div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-orange-300 text-orange-600 hover:bg-orange-50"
+                          onClick={() => {
+                            const input = document.createElement("input");
+                            input.type = "file";
+                            input.accept = "audio/*";
+                            input.onchange = (e) => {
+                              const file = (e.target as HTMLInputElement).files?.[0];
+                              if (file) setBgMusic(file);
+                            };
+                            input.click();
+                          }}
+                        >
+                          选择文件
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 底部操作栏 */}
+        <div className="border-t bg-white px-6 py-4 flex justify-end items-center gap-3">
+          <Button variant="outline" onClick={onClose}>
+            取消
+          </Button>
+          <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
+            保存
+          </Button>
+        </div>
+
+        {/* Toast提示 */}
+        {toast && (
+          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg text-sm shadow-lg z-50"
+            style={{ animation: "fadeIn 0.2s ease-out" }}>
+            {toast}
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function ResultCard({ result, index, onDelete, onEdit, onEditV2, onCopy }: { result: GenerationResult; index: number; onDelete: (id: string) => void; onEdit: (result: GenerationResult) => void; onEditV2: (result: GenerationResult) => void; onCopy: (result: GenerationResult) => void; }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    onCopy(result);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
     <Card className="overflow-hidden">
       <div className="p-4 flex gap-4">
@@ -1047,7 +1576,7 @@ function ResultCard({ result, index, onDelete, onEdit, onEditV2 }: { result: Gen
         {/* 右侧内容区域 */}
         <div className="flex-1 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="font-medium">结果 {index + 1}</span>
+            <span className="font-medium">{result.name}</span>
             <StatusBadge status={result.status} />
           </div>
           {/* 已生成状态 */}
@@ -1068,9 +1597,17 @@ function ResultCard({ result, index, onDelete, onEdit, onEditV2 }: { result: Gen
                 </div>
               </div>
               <div className="flex gap-2 pt-2">
+                <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={() => onDelete(result.id)}>删除</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopy}
+                  className={copied ? "text-green-600 border-green-200 bg-green-50" : ""}
+                >
+                  {copied ? "已复制" : "复制"}
+                </Button>
                 <Button variant="outline" size="sm" className="bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100" onClick={() => onEditV2(result)}>编辑</Button>
                 <Button variant="outline" size="sm" className="flex-1">保存为作品</Button>
-                <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={() => onDelete(result.id)}>删除</Button>
               </div>
             </>
           )}
@@ -1109,6 +1646,7 @@ function ResultCard({ result, index, onDelete, onEdit, onEditV2 }: { result: Gen
 function TaskCreationTab({ task }: { task: GenerationTask }) {
   const [config, setConfig] = useState(task.config);
   const [direction, setDirection] = useState("角色");
+  const [splitByShot, setSplitByShot] = useState(false);
   const [textDescriptions, setTextDescriptions] = useState<string[]>(config.textDescriptions || []);
   const [derivedCount, setDerivedCount] = useState(config.derivedCount || 3);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -1471,6 +2009,34 @@ function TaskCreationTab({ task }: { task: GenerationTask }) {
             {config.generationMode === "text" && textDescriptions.length > 0 && (
               <div className="flex items-center"><span className="text-sm text-gray-500">将创建 {textDescriptions.length} 个任务</span></div>
             )}
+            {/* 分镜拆分 - 仅视频模式显示 */}
+            {config.generationMode === "video" && (
+              <div className="col-span-2">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">分镜拆分</div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {splitByShot
+                        ? "开启：按分镜拆分成多个提示词（适合15秒以上长视频）"
+                        : "关闭：所有分镜合并生成一个提示词（适合15秒内短视频）"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSplitByShot(!splitByShot)}
+                    className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${
+                      splitByShot ? "bg-blue-600" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
+                        splitByShot ? "translate-x-6" : "translate-x-2"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            )}
           </div></div>
         )}
         {/* 变更方向 - 仅视频模式显示 */}
@@ -1496,13 +2062,13 @@ function TaskCreationTab({ task }: { task: GenerationTask }) {
   );
 }
 
-function EditTab({ task, onDeleteResult }: { task: GenerationTask; onDeleteResult: (id: string) => void; }) {
+function EditTab({ task, onDeleteResult, onCopyResult }: { task: GenerationTask; onDeleteResult: (id: string) => void; onCopyResult: (result: GenerationResult) => void; }) {
   const [editingResult, setEditingResult] = useState<GenerationResult | null>(null);
   const [editingResultV2, setEditingResultV2] = useState<GenerationResult | null>(null);
   return (
     <div>
       <div className="flex justify-between items-center mb-4"><h2 className="text-lg font-semibold">生成结果 ({task.results.length})</h2></div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{task.results.map((result, index) => <ResultCard key={result.id} result={result} index={index} onDelete={onDeleteResult} onEdit={setEditingResult} onEditV2={setEditingResultV2} />)}</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{task.results.map((result, index) => <ResultCard key={result.id} result={result} index={index} onDelete={onDeleteResult} onEdit={setEditingResult} onEditV2={setEditingResultV2} onCopy={onCopyResult} />)}</div>
       {editingResult && <EditDrawer open={!!editingResult} onClose={() => setEditingResult(null)} result={editingResult} onSave={(shots) => console.log("保存分镜:", shots)} />}
       {editingResultV2 && <EditDrawerV2 open={!!editingResultV2} onClose={() => setEditingResultV2(null)} result={editingResultV2} onSave={(shots) => console.log("保存分镜v2:", shots)} />}
     </div>
@@ -1526,6 +2092,21 @@ function GenerationTaskContent() {
   const [task, setTask] = useState<GenerationTask>(mockTask);
   const [activeTab, setActiveTab] = useState<"create" | "edit" | "works">("edit");
   const handleDeleteResult = (id: string) => { setTask((prev) => ({ ...prev, results: prev.results.filter((r) => r.id !== id) })); };
+  const handleCopyResult = (result: GenerationResult) => {
+    // 计算当前该结果的副本数量
+    const sameBaseCount = task.results.filter((r) => r.name.startsWith(result.name + "_副本")).length + 1;
+    const newName = `${result.name}_副本${sameBaseCount}`;
+    const copiedResult: GenerationResult = {
+      ...result,
+      id: `${result.id}_副本${sameBaseCount}`,
+      name: newName,
+      status: "completed",
+    };
+    setTask((prev) => ({
+      ...prev,
+      results: [...prev.results, copiedResult],
+    }));
+  };
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
@@ -1535,7 +2116,7 @@ function GenerationTaskContent() {
         {(["create", "edit", "works"] as const).map((tab) => <button key={tab} onClick={() => setActiveTab(tab)} className={`pb-3 px-1 font-medium transition-colors relative ${activeTab === tab ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}>{tab === "create" ? "任务创建" : tab === "edit" ? "编辑" : "作品列表"}</button>)}
       </div>
       {activeTab === "create" && <TaskCreationTab task={task} />}
-      {activeTab === "edit" && <EditTab task={task} onDeleteResult={handleDeleteResult} />}
+      {activeTab === "edit" && <EditTab task={task} onDeleteResult={handleDeleteResult} onCopyResult={handleCopyResult} />}
       {activeTab === "works" && <WorksListTab works={mockWorks} />}
     </div>
   );

@@ -45,6 +45,7 @@ export type VideoGenerationStatus = "pending" | "generating" | "completed" | "fa
 // 单个生成结果
 export interface GenerationResult {
   id: string;
+  name: string;            // 名称，如"结果1"、"结果1_副本1"
   status: VideoGenerationStatus;
   prompt: string;          // 提示词
   videoUrl?: string;       // 生成后的视频URL
@@ -83,6 +84,8 @@ export interface Task {
   referenceVideo?: string;
   // 文字生成的提示词
   textPrompt?: string;
+  // 任务缩略图
+  thumbnail?: string;
 }
 
 export interface MaterialsData {
