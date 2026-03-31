@@ -63,8 +63,6 @@ interface FormState {
   splitByShot: boolean;  // 分镜拆分
   // text模式
   textPrompt: string;
-  textDescriptions: string[];
-  derivedCount: number;
   // narration模式
   originalNarration: string;
   // creative模式
@@ -90,9 +88,6 @@ type FormAction =
   | { type: "SET_FIELD"; field: keyof FormState; value: FormState[keyof FormState] }
   | { type: "RESET_MODE_STATE"; mode: GenerationMode }
   | { type: "SET_MODE_TRANSITIONING"; value: boolean }
-  | { type: "ADD_TEXT_DESCRIPTION" }
-  | { type: "UPDATE_TEXT_DESCRIPTION"; index: number; value: string }
-  | { type: "DELETE_TEXT_DESCRIPTION"; index: number }
   | { type: "ADD_CREATIVE_DESCRIPTION" }
   | { type: "UPDATE_CREATIVE_DESCRIPTION"; index: number; value: string }
   | { type: "DELETE_CREATIVE_DESCRIPTION"; index: number }
@@ -135,16 +130,13 @@ function formReducer(state: FormState, action: FormAction): FormState {
           direction: "角色",
           splitByShot: false,
           textPrompt: "",
-          textDescriptions: [],
-          originalNarration: "",
+                    originalNarration: "",
           creativeType: "",
           creativeDescriptions: [],
         },
         text: {
           referenceVideo: "",
           textPrompt: "",
-          textDescriptions: [],
-          derivedCount: 3,
           originalNarration: "",
           creativeType: "",
           creativeDescriptions: [],
@@ -152,16 +144,14 @@ function formReducer(state: FormState, action: FormAction): FormState {
         narration: {
           referenceVideo: "",
           textPrompt: "",
-          textDescriptions: [],
-          originalNarration: "",
+                    originalNarration: "",
           creativeType: "",
           creativeDescriptions: [],
         },
         creative: {
           referenceVideo: "",
           textPrompt: "",
-          textDescriptions: [],
-          originalNarration: "",
+                    originalNarration: "",
           creativeDescriptions: [],
         },
       };
@@ -169,25 +159,6 @@ function formReducer(state: FormState, action: FormAction): FormState {
 
     case "SET_MODE_TRANSITIONING":
       return { ...state, modeTransitioning: action.value };
-
-    case "ADD_TEXT_DESCRIPTION":
-      return {
-        ...state,
-        textDescriptions: [...state.textDescriptions, ""],
-        editingIndex: state.textDescriptions.length,
-        editValue: "",
-      };
-
-    case "UPDATE_TEXT_DESCRIPTION":
-      const updatedTexts = [...state.textDescriptions];
-      updatedTexts[action.index] = action.value;
-      return { ...state, textDescriptions: updatedTexts, editingIndex: null, editValue: "" };
-
-    case "DELETE_TEXT_DESCRIPTION":
-      return {
-        ...state,
-        textDescriptions: state.textDescriptions.filter((_, i) => i !== action.index),
-      };
 
     case "ADD_CREATIVE_DESCRIPTION":
       return {
@@ -253,31 +224,6 @@ function CreateTaskForm({
     }, 150);
   }, []);
 
-  // Mock AI 生成衍生描述（模式二）
-  const handleGenerateDescriptions = useCallback(() => {
-    if (!state.textPrompt.trim()) return;
-    dispatch({ type: "SET_FIELD", field: "isGenerating", value: true });
-
-    setTimeout(() => {
-      const mockDerivatives = [
-        `${state.textPrompt}，采用更加动感的镜头语言`,
-        `${state.textPrompt}，强调情感表达`,
-        `${state.textPrompt}，添加更多细节描写`,
-        `${state.textPrompt}，变换叙事视角`,
-        `${state.textPrompt}，融入更多情绪氛围`,
-        `${state.textPrompt}，使用电影级调色`,
-        `${state.textPrompt}，增加戏剧冲突`,
-        `${state.textPrompt}，采用写实风格`,
-        `${state.textPrompt}，添加浪漫元素`,
-        `${state.textPrompt}，突出主题内核`,
-      ];
-
-      const newDescriptions = mockDerivatives.slice(0, state.derivedCount);
-      dispatch({ type: "SET_FIELD", field: "textDescriptions", value: [state.textPrompt, ...newDescriptions] });
-      dispatch({ type: "SET_FIELD", field: "isGenerating", value: false });
-    }, 1500);
-  }, [state.textPrompt, state.derivedCount]);
-
   // Mock AI 生成创意描述（模式四）
   const handleGenerateCreativeDescriptions = useCallback(() => {
     if (!state.originalNarration.trim() || !state.creativeType) return;
@@ -340,7 +286,7 @@ function CreateTaskForm({
       endTime: "-",
       generationMode: state.generationMode,
       referenceVideo: state.generationMode === "video" ? state.referenceVideo : undefined,
-      textPrompt: state.generationMode === "text" ? (state.textDescriptions.length > 0 ? state.textDescriptions[0] : state.textPrompt) : undefined,
+      textPrompt: state.generationMode === "text" ? state.textPrompt : undefined,
     };
 
     onCreate(newTask);
@@ -690,12 +636,6 @@ function CreateTaskForm({
                     />
                   </button>
                 </div>
-              </div>
-            )}
-            {/* 任务数量提示 - 仅文字模式显示 */}
-            {generationMode === "text" && state.textDescriptions.length > 0 && (
-              <div className="flex items-center">
-                <span className="text-sm text-purple-600 font-medium">将创建 {state.textDescriptions.length} 个任务</span>
               </div>
             )}
           </div>
