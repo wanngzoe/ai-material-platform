@@ -1659,11 +1659,7 @@ function TaskCreationTab({ task }: { task: GenerationTask }) {
   const [config, setConfig] = useState(task.config);
   const [direction, setDirection] = useState("角色");
   const [splitByShot, setSplitByShot] = useState(false);
-  const [textDescriptions, setTextDescriptions] = useState<string[]>(config.textDescriptions || []);
-  const [derivedCount, setDerivedCount] = useState(config.derivedCount || 3);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editValue, setEditValue] = useState("");
 
   // 模式四：创意描述相关
   const [creativeDescriptions, setCreativeDescriptions] = useState<string[]>(config.creativeDescriptions || []);
@@ -1671,31 +1667,6 @@ function TaskCreationTab({ task }: { task: GenerationTask }) {
   const [isGeneratingCreative, setIsGeneratingCreative] = useState(false);
   const [creativeEditingIndex, setCreativeEditingIndex] = useState<number | null>(null);
   const [creativeEditValue, setCreativeEditValue] = useState("");
-
-  // Mock AI 生成衍生描述（模式二）
-  const handleGenerateDescriptions = () => {
-    if (!config.textPrompt?.trim()) return;
-    setIsGenerating(true);
-
-    setTimeout(() => {
-      const mockDerivatives = [
-        `${config.textPrompt}，采用更加动感的镜头语言`,
-        `${config.textPrompt}，强调情感表达`,
-        `${config.textPrompt}，添加更多细节描写`,
-        `${config.textPrompt}，变换叙事视角`,
-        `${config.textPrompt}，融入更多情绪氛围`,
-        `${config.textPrompt}，使用电影级调色`,
-        `${config.textPrompt}，增加戏剧冲突`,
-        `${config.textPrompt}，采用写实风格`,
-        `${config.textPrompt}，添加浪漫元素`,
-        `${config.textPrompt}，突出主题内核`,
-      ];
-
-      const newDescriptions = mockDerivatives.slice(0, derivedCount);
-      setTextDescriptions([config.textPrompt || "", ...newDescriptions]);
-      setIsGenerating(false);
-    }, 1500);
-  };
 
   // Mock AI 生成创意描述（模式四）
   const handleGenerateCreativeDescriptions = () => {
@@ -1745,22 +1716,6 @@ function TaskCreationTab({ task }: { task: GenerationTask }) {
       setCreativeDescriptions(results.slice(0, creativeCount));
       setIsGeneratingCreative(false);
     }, 1500);
-  };
-
-  const handleAddDescription = () => {
-    setTextDescriptions([...textDescriptions, ""]);
-    setEditingIndex(textDescriptions.length);
-    setEditValue("");
-  };
-
-  const handleUpdateDescription = (index: number, value: string) => {
-    const updated = [...textDescriptions];
-    updated[index] = value;
-    setTextDescriptions(updated);
-  };
-
-  const handleDeleteDescription = (index: number) => {
-    setTextDescriptions(textDescriptions.filter((_, i) => i !== index));
   };
 
   const handleAddCreativeDescription = () => {
@@ -1859,83 +1814,6 @@ function TaskCreationTab({ task }: { task: GenerationTask }) {
         )}
         </div></div>
 
-        {/* 文字生成模式：衍生描述管理 */}
-        {config.generationMode === "text" && (
-          <div className="border rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-4">衍生描述</h3>
-            <div className="flex items-center gap-4 mb-4">
-              <Label className="whitespace-nowrap">衍生数量: {derivedCount}</Label>
-              <Slider
-                value={[derivedCount]}
-                onValueChange={(val) => setDerivedCount(Array.isArray(val) ? val[0] : val)}
-                max={10}
-                min={1}
-                step={1}
-                className="flex-1"
-              />
-              <Button
-                onClick={handleGenerateDescriptions}
-                disabled={!config.textPrompt?.trim() || isGenerating}
-                className="bg-purple-600 hover:bg-purple-700"
-              >
-                {isGenerating ? "生成中..." : "AI生成"}
-              </Button>
-            </div>
-
-            {/* 描述列表 */}
-            {textDescriptions.length > 0 && (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {textDescriptions.map((desc, index) => (
-                  <div key={index} className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-500 mt-2 w-6">{index + 1}.</span>
-                    {editingIndex === index ? (
-                      <Textarea
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onBlur={() => {
-                          handleUpdateDescription(index, editValue);
-                          setEditingIndex(null);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && e.metaKey) {
-                            handleUpdateDescription(index, editValue);
-                            setEditingIndex(null);
-                          }
-                        }}
-                        rows={2}
-                        className="flex-1"
-                        autoFocus
-                      />
-                    ) : (
-                      <div
-                        className="flex-1 text-sm py-1 px-2 cursor-pointer hover:bg-gray-100 rounded"
-                        onClick={() => {
-                          setEditingIndex(index);
-                          setEditValue(desc);
-                        }}
-                      >
-                        {desc}
-                      </div>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-500 hover:text-red-600"
-                      onClick={() => handleDeleteDescription(index)}
-                    >
-                      ✕
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <Button variant="outline" size="sm" onClick={handleAddDescription} className="mt-3">
-              + 添加描述
-            </Button>
-          </div>
-        )}
-
         {/* 模式四：创意描述生成 */}
         {config.generationMode === "creative" && (
           <div className="border rounded-lg p-4">
@@ -2016,10 +1894,6 @@ function TaskCreationTab({ task }: { task: GenerationTask }) {
             {/* 生成数量 - 仅视频模式显示 */}
             {config.generationMode === "video" && (
               <div><Label>生成数量: {config.generationCount}</Label><Slider value={[config.generationCount]} onValueChange={(val) => setConfig({ ...config, generationCount: Array.isArray(val) ? val[0] : val })} max={10} min={1} step={1} className="mt-3" /></div>
-            )}
-            {/* 任务数量提示 - 仅文字模式显示 */}
-            {config.generationMode === "text" && textDescriptions.length > 0 && (
-              <div className="flex items-center"><span className="text-sm text-gray-500">将创建 {textDescriptions.length} 个任务</span></div>
             )}
             {/* 分镜拆分 - 仅视频模式显示 */}
             {config.generationMode === "video" && (
