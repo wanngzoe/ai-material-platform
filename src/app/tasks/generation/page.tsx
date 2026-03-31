@@ -1655,7 +1655,7 @@ function ResultCard({ result, index, onDelete, onEdit, onEditV2, onCopy }: { res
   );
 }
 
-function TaskCreationTab({ task }: { task: GenerationTask }) {
+function TaskCreationTab({ task, isEditing = false, onCreated }: { task: GenerationTask; isEditing?: boolean; onCreated?: () => void }) {
   const [config, setConfig] = useState(task.config);
   const [direction, setDirection] = useState("角色");
   const [splitByShot, setSplitByShot] = useState(false);
@@ -1792,14 +1792,25 @@ function TaskCreationTab({ task }: { task: GenerationTask }) {
           </div>
         </div>
 
-        <div><h3 className="text-lg font-semibold mb-4">基本信息</h3><div className="grid grid-cols-2 gap-4"><div><Label>任务名称</Label><Input value={config.name} onChange={(e) => setConfig({ ...config, name: e.target.value })} className="mt-1" /></div>
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">基本信息</h3>
+            {isEditing && <span className="text-xs text-gray-400">只读</span>}
+          </div>
+          <div className="grid grid-cols-2 gap-4"><div><Label>任务名称</Label><Input value={config.name} onChange={(e) => setConfig({ ...config, name: e.target.value })} className="mt-1" /></div>
         {/* 参考视频 - 仅在视频模式和旁白模式显示 */}
         {(config.generationMode === "video" || config.generationMode === "narration") && (
-          <div><Label>参考视频</Label><div className="mt-1 flex items-center gap-2">{config.referenceVideo && <img src={config.referenceVideo.thumbnail} alt="参考视频" className="w-16 h-10 object-cover rounded" />}<span className="text-sm">{config.referenceVideo?.name}</span></div></div>
+          <div><Label>参考视频</Label><div className={`mt-1 flex items-center gap-2 ${isEditing ? "opacity-60" : ""}`}>{config.referenceVideo && <img src={config.referenceVideo.thumbnail} alt="参考视频" className="w-16 h-10 object-cover rounded" />}<span className="text-sm">{config.referenceVideo?.name || "未选择"}</span></div></div>
         )}
         {/* 文字输入 - 仅在文字模式下显示 */}
         {config.generationMode === "text" && (
-          <div className="col-span-2"><Label>基础视频描述</Label><Textarea value={config.textPrompt || ""} onChange={(e) => setConfig({ ...config, textPrompt: e.target.value })} rows={3} className="mt-1" placeholder="请详细描述你想要生成的视频内容..." /></div>
+          <div className="col-span-2">
+            <div className="flex items-center justify-between mb-1">
+              <Label>视频脚本</Label>
+              {isEditing && <span className="text-xs text-gray-400">只读</span>}
+            </div>
+            <Textarea value={config.textPrompt || ""} onChange={(e) => setConfig({ ...config, textPrompt: e.target.value })} rows={3} className={`mt-1 ${isEditing ? "bg-gray-50 cursor-not-allowed" : ""}`} placeholder="输入视频描述或旁白文案，生成画面提示词" disabled={isEditing} />
+          </div>
         )}
         {/* 模式三：旁白生成 - 原文案输入 */}
         {config.generationMode === "narration" && (
@@ -1887,7 +1898,7 @@ function TaskCreationTab({ task }: { task: GenerationTask }) {
 
         {/* 生成参数 - 仅视频和文字模式显示 */}
         {(config.generationMode === "video" || config.generationMode === "text") && (
-          <div><h3 className="text-lg font-semibold mb-4">生成参数</h3><div className="grid grid-cols-2 gap-4">
+          <div className={`${isEditing ? "opacity-60 pointer-events-none" : ""}`}><h3 className="text-lg font-semibold mb-4">生成参数</h3><div className="grid grid-cols-2 gap-4">
             <div><Label>模型</Label><Select value={config.model} onValueChange={(v) => setConfig({ ...config, model: v as "seedance_2.0" | "wan_2.6" })}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="seedance_2.0">Seedance 2.0</SelectItem><SelectItem value="wan_2.6">Wan 2.6</SelectItem></SelectContent></Select></div>
             <div><Label>画面比例</Label><Select value={config.aspectRatio} onValueChange={(v) => setConfig({ ...config, aspectRatio: v as "16:9" | "9:16" | "1:1" })}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="16:9">16:9</SelectItem><SelectItem value="9:16">9:16</SelectItem><SelectItem value="1:1">1:1</SelectItem></SelectContent></Select></div>
             <div><Label>分辨率</Label><Select value={config.resolution} onValueChange={(v) => setConfig({ ...config, resolution: v as "720p" | "1080p" | "2k" })}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="720p">720p</SelectItem><SelectItem value="1080p">1080p</SelectItem><SelectItem value="2k">2K</SelectItem></SelectContent></Select></div>
@@ -1927,7 +1938,7 @@ function TaskCreationTab({ task }: { task: GenerationTask }) {
         )}
         {/* 变更方向 - 仅视频模式显示 */}
         {config.generationMode === "video" && (
-          <div className="border rounded-lg p-4">
+          <div className={`border rounded-lg p-4 ${isEditing ? "opacity-60 pointer-events-none" : ""}`}>
             <h3 className="text-lg font-semibold mb-4">变更方向</h3>
             <div className="flex flex-wrap gap-2">
               {["角色", "场景", "画风", "氛围", "其他"].map((v) => (
@@ -1937,9 +1948,9 @@ function TaskCreationTab({ task }: { task: GenerationTask }) {
           </div>
         )}
         <div className="flex justify-end gap-2 pt-4">
-          <Button variant="outline">取消</Button>
-          {config.generationMode === "video" && <Button className="bg-blue-600 hover:bg-blue-700">创建任务</Button>}
-          {config.generationMode === "text" && <Button className="bg-purple-600 hover:bg-purple-700">创建任务</Button>}
+          <Button variant="outline" onClick={() => window.location.reload()}>取消</Button>
+          {config.generationMode === "video" && <Button className="bg-blue-600 hover:bg-blue-700" onClick={onCreated}>创建任务</Button>}
+          {config.generationMode === "text" && <Button className="bg-purple-600 hover:bg-purple-700" onClick={onCreated}>创建任务</Button>}
           {config.generationMode === "narration" && <Button className="bg-green-600 hover:bg-green-700">生成旁白</Button>}
           {config.generationMode === "creative" && <Button className="bg-orange-600 hover:bg-orange-700">生成创意描述</Button>}
         </div>
@@ -1976,7 +1987,13 @@ function GenerationTaskContent() {
   const searchParams = useSearchParams();
   const taskId = searchParams.get("id");
   const [task, setTask] = useState<GenerationTask>(mockTask);
-  const [activeTab, setActiveTab] = useState<"create" | "edit" | "works">("edit");
+  const [activeTab, setActiveTab] = useState<"create" | "edit" | "works">("create");
+  const [isEditing, setIsEditing] = useState(false);
+
+  const handleTaskCreated = () => {
+    setIsEditing(true);
+    setActiveTab("edit");
+  };
   const handleDeleteResult = (id: string) => { setTask((prev) => ({ ...prev, results: prev.results.filter((r) => r.id !== id) })); };
   const handleCopyResult = (result: GenerationResult) => {
     // 计算当前该结果的副本数量
@@ -2001,7 +2018,7 @@ function GenerationTaskContent() {
       <div className="flex gap-4 border-b mb-6">
         {(["create", "edit", "works"] as const).map((tab) => <button key={tab} onClick={() => setActiveTab(tab)} className={`pb-3 px-1 font-medium transition-colors relative ${activeTab === tab ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}>{tab === "create" ? "任务创建" : tab === "edit" ? "编辑" : "作品列表"}</button>)}
       </div>
-      {activeTab === "create" && <TaskCreationTab task={task} />}
+      {activeTab === "create" && <TaskCreationTab task={task} isEditing={isEditing} onCreated={handleTaskCreated} />}
       {activeTab === "edit" && <EditTab task={task} onDeleteResult={handleDeleteResult} onCopyResult={handleCopyResult} />}
       {activeTab === "works" && <WorksListTab works={mockWorks} />}
     </div>
