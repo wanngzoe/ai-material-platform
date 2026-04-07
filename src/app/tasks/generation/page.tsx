@@ -553,6 +553,7 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [historyShotId, setHistoryShotId] = useState<string | null>(null);
   const [restoreConfirm, setRestoreConfirm] = useState<{ shotId: string; item: any } | null>(null);
+  const [deleteHistoryConfirm, setDeleteHistoryConfirm] = useState<{ shotId: string; itemId: string } | null>(null);
   const [expandedPrompt, setExpandedPrompt] = useState<string | null>(null);
   const [previewVideo, setPreviewVideo] = useState<string | null>(null);
   const [showImagePicker, setShowImagePicker] = useState(false);
@@ -570,6 +571,11 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
 
   const updateShot = (id: string, updates: Partial<Shot>) => {
     setShots((prev) => prev.map((shot) => (shot.id === id ? { ...shot, ...updates } : shot)));
+  };
+
+  // 删除历史记录
+  const deleteHistoryItem = (shotId: string, itemId: string) => {
+    setShots((prev) => prev.map((shot) => shot.id === shotId ? { ...shot, history: shot.history?.filter(h => h.id !== itemId) } : shot));
   };
 
   // 生成图片
@@ -664,6 +670,27 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
   };
 
   const generateSingleShot = (shotId: string) => {
+    const shot = shots.find(s => s.id === shotId);
+    if (!shot) return;
+
+    // 检查历史记录数量，超过9条时提示用户先删除
+    if (shot.history && shot.history.length >= 9) {
+      setHistoryShotId(shotId);
+      return;
+    }
+
+    // 生成前保存当前版本到历史记录
+    if (shot.videoUrl || shot.prompt) {
+      const newHistoryItem: VideoHistoryItem = {
+        id: `h${Date.now()}`,
+        videoUrl: shot.videoUrl || "",
+        prompt: shot.prompt,
+        duration: shot.duration,
+        createTime: new Date().toLocaleString("zh-CN"),
+      };
+      setShots((prev) => prev.map((s) => s.id === shotId ? { ...s, history: [...(s.history || []), newHistoryItem] } : s));
+    }
+
     setGeneratingShotId(shotId);
     setTimeout(() => {
       setShots((prev) => prev.map((shot) => shot.id === shotId ? { ...shot, status: "generating" as VideoGenerationStatus, progress: 0 } : shot));
@@ -982,12 +1009,41 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* 删除历史记录确认对话框 */}
+      <Dialog open={!!deleteHistoryConfirm} onOpenChange={() => setDeleteHistoryConfirm(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>删除此历史版本？</DialogTitle><DialogDescription>删除后无法找回，请确认。</DialogDescription></DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteHistoryConfirm(null)}>取消</Button>
+            <Button onClick={() => { if (deleteHistoryConfirm) { deleteHistoryItem(deleteHistoryConfirm.shotId, deleteHistoryConfirm.itemId); setDeleteHistoryConfirm(null); } }} className="bg-red-500 hover:bg-red-600 text-white">确认删除</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* 历史版本对话框 */}
       <Dialog open={!!historyShotId} onOpenChange={() => setHistoryShotId(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>历史版本</DialogTitle></DialogHeader>
-          <div className="text-xs text-gray-500 mb-2">最多保存10条历史记录，超出后将自动覆盖最旧的记录，请及时下载保存</div>
+          <div className="text-xs text-gray-500 mb-2">历史记录（不含当前使用）最多保存9条，超出后需先删除旧记录才能生成新视频，请及时下载保存</div>
           <div className="space-y-3 max-h-96 overflow-y-auto">
+            {/* 当前使用 */}
+            {historyShotId && (() => {
+              const shot = shots.find(s => s.id === historyShotId);
+              return shot?.videoUrl || shot?.prompt ? (
+                <div className="flex gap-4 p-3 border-2 border-green-400 rounded-lg bg-green-50">
+                  <div className="w-32 h-32 flex-shrink-0 bg-gray-100 rounded overflow-hidden cursor-pointer hover:ring-2 hover:ring-green-500 relative" onClick={() => setPreviewVideo(shot.videoUrl || null)}>
+                    <img src={shot.videoUrl || ""} alt="当前使用" className="w-full h-full object-cover" />
+                    <div className="absolute bottom-1 right-1 bg-black/60 text-white text-xs px-1 rounded">{shot.duration}秒</div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-green-600 flex items-center gap-2">
+                      <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded">当前使用</span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1 line-clamp-2">{shot.prompt.length > 50 ? shot.prompt.substring(0, 50) + "..." : shot.prompt}</div>
+                  </div>
+                </div>
+              ) : null;
+            })()}
+            {/* 历史版本列表 */}
             {historyShotId && shots.find(s => s.id === historyShotId)?.history?.map((item, idx) => (
               <div key={item.id} className="flex gap-4 p-3 border rounded-lg hover:bg-gray-50">
                 <div className="w-32 h-32 flex-shrink-0 bg-gray-100 rounded overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 relative" onClick={() => setPreviewVideo(item.videoUrl)}>
@@ -1003,6 +1059,7 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
                 <div className="flex flex-col gap-2">
                   <Button variant="outline" size="sm" onClick={() => historyShotId && setRestoreConfirm({ shotId: historyShotId, item })}>恢复此版本</Button>
                   <Button variant="ghost" size="sm" className="text-gray-500">复制提示词</Button>
+                  <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={() => historyShotId && setDeleteHistoryConfirm({ shotId: historyShotId, itemId: item.id })}>删除</Button>
                 </div>
               </div>
             ))}
