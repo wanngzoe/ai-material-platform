@@ -986,7 +986,7 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
       <Dialog open={!!historyShotId} onOpenChange={() => setHistoryShotId(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>历史版本</DialogTitle></DialogHeader>
-          <div className="text-xs text-gray-500 mb-2">最多保存10条历史记录，超出后将自动覆盖最旧的记录</div>
+          <div className="text-xs text-gray-500 mb-2">最多保存10条历史记录，超出后将自动覆盖最旧的记录，请及时下载保存</div>
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {historyShotId && shots.find(s => s.id === historyShotId)?.history?.map((item, idx) => (
               <div key={item.id} className="flex gap-4 p-3 border rounded-lg hover:bg-gray-50">
