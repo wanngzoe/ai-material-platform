@@ -1835,8 +1835,8 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
                   : "border-gray-200 hover:border-gray-300"
               }`}
             >
-              <div className="font-medium text-lg">✏️ 文字生成视频</div>
-              <div className="text-sm text-gray-500 mt-1">输入描述，生成前贴视频</div>
+              <div className="font-medium text-lg">✏️ 文案生成视频</div>
+              <div className="text-sm text-gray-500 mt-1">输入前贴文案，生成视频</div>
             </button>
             <button
               type="button"
@@ -1859,8 +1859,8 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
                   : "border-gray-200 hover:border-gray-300"
               }`}
             >
-              <div className="font-medium text-lg">💡 创意描述生成</div>
-              <div className="text-sm text-gray-500 mt-1">输入原文，生成创意描述</div>
+              <div className="font-medium text-lg">💡 生成前贴文案</div>
+              <div className="text-sm text-gray-500 mt-1">输入原剧剧情，生成前贴文案</div>
             </button>
           </div>
         </div>
@@ -1889,7 +1889,7 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
         {config.generationMode === "narration" && (
           <div className="col-span-2"><Label>原文案</Label><Textarea value={config.originalNarration || ""} onChange={(e) => setConfig({ ...config, originalNarration: e.target.value })} rows={3} className="mt-1" placeholder="请输入原始旁白文案..." /></div>
         )}
-        {/* 模式四：创意描述 - 原文案和创意类型 */}
+        {/* 模式四：生成前贴文案 - 原文案和创意类型 */}
         {config.generationMode === "creative" && (
           <>
             <div><Label>原文案</Label><Textarea value={config.originalNarration || ""} onChange={(e) => setConfig({ ...config, originalNarration: e.target.value })} rows={3} className="mt-1" placeholder="请输入原始旁白文案..." /></div>
@@ -1898,10 +1898,10 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
         )}
         </div></div>
 
-        {/* 模式四：创意描述生成 */}
+        {/* 模式四：生成前贴文案 */}
         {config.generationMode === "creative" && (
           <div className="border rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-4">创意描述</h3>
+            <h3 className="text-lg font-semibold mb-4">前贴文案</h3>
             <div className="flex items-center gap-4 mb-4">
               <Label className="whitespace-nowrap">生成数量: {creativeCount}</Label>
               <Slider
@@ -1921,7 +1921,7 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
               </Button>
             </div>
 
-            {/* 创意描述列表 */}
+            {/* 前贴文案列表 */}
             {creativeDescriptions.length > 0 && (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {creativeDescriptions.map((desc, index) => (
@@ -2025,7 +2025,7 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
           {config.generationMode === "video" && <Button className="bg-blue-600 hover:bg-blue-700" onClick={onCreated}>创建任务</Button>}
           {config.generationMode === "text" && <Button className="bg-purple-600 hover:bg-purple-700" onClick={onCreated}>创建任务</Button>}
           {config.generationMode === "narration" && <Button className="bg-green-600 hover:bg-green-700">生成旁白</Button>}
-          {config.generationMode === "creative" && <Button className="bg-orange-600 hover:bg-orange-700">生成创意描述</Button>}
+          {config.generationMode === "creative" && <Button className="bg-orange-600 hover:bg-orange-700">生成前贴文案</Button>}
         </div>
       </CardContent></Card>
     </div>
