@@ -66,7 +66,7 @@ interface FormState {
   // narration模式
   originalNarration: string;
   // creative模式
-  creativeType: string;
+  requiredElements: string;
   creativeDescriptions: string[];
   creativeCount: number;
   // 通用参数
@@ -102,9 +102,9 @@ const initialState: FormState = {
   splitByShot: false,
   textPrompt: "",
   originalNarration: "",
-  creativeType: "",
+  requiredElements: "",
   creativeDescriptions: [],
-  creativeCount: 5,
+  creativeCount: 10,
   model: "seedance_2.0",
   aspectRatio: "16:9",
   resolution: "720p",
@@ -131,21 +131,21 @@ function formReducer(state: FormState, action: FormAction): FormState {
           splitByShot: false,
           textPrompt: "",
                     originalNarration: "",
-          creativeType: "",
+          requiredElements: "",
           creativeDescriptions: [],
         },
         text: {
           referenceVideo: "",
           textPrompt: "",
           originalNarration: "",
-          creativeType: "",
+          requiredElements: "",
           creativeDescriptions: [],
         },
         narration: {
           referenceVideo: "",
           textPrompt: "",
                     originalNarration: "",
-          creativeType: "",
+          requiredElements: "",
           creativeDescriptions: [],
         },
         creative: {
@@ -224,55 +224,19 @@ function CreateTaskForm({
     }, 150);
   }, []);
 
-  // Mock AI 生成创意描述（模式四）
+  // Mock AI 生成前贴文案（模式四）
   const handleGenerateCreativeDescriptions = useCallback(() => {
-    if (!state.originalNarration.trim() || !state.creativeType) return;
+    if (!state.originalNarration.trim() || !state.requiredElements.trim()) return;
     dispatch({ type: "SET_FIELD", field: "isGeneratingCreative", value: true });
 
     setTimeout(() => {
-      const creativePrompts: Record<string, string[]> = {
-        "搞笑": [
-          `【搞笑版】${state.originalNarration}，使用夸张的表情和动作`,
-          `【搞笑版】${state.originalNarration}，添加幽默的对白`,
-          `【搞笑版】${state.originalNarration}，反转剧情`,
-          `【搞笑版】${state.originalNarration}，使用方言配音`,
-          `【搞笑版】${state.originalNarration}，恶搞风格`,
-        ],
-        "感人": [
-          `【感人版】${state.originalNarration}，缓慢深情的镜头`,
-          `【感人版】${state.originalNarration}，添加回忆片段`,
-          `【感人版】${state.originalNarration}，温情的音乐`,
-          `【感人版】${state.originalNarration}，突出情感细节`,
-          `【感人版】${state.originalNarration}，煽情的配乐`,
-        ],
-        "热血": [
-          `【热血版】${state.originalNarration}，激昂的背景音乐`,
-          `【热血版】${state.originalNarration}，快速剪辑`,
-          `【热血版】${state.originalNarration}，添加战斗画面`,
-          `【热血版】${state.originalNarration}，突出主角光环`,
-          `【热血版】${state.originalNarration}，震撼的特效`,
-        ],
-        "悬疑": [
-          `【悬疑版】${state.originalNarration}，阴暗的色调`,
-          `【悬疑版】${state.originalNarration}，紧张的配乐`,
-          `【悬疑版】${state.originalNarration}，隐藏关键信息`,
-          `【悬疑版】${state.originalNarration}，暗示结局`,
-          `【悬疑版】${state.originalNarration}，神秘的气氛`,
-        ],
-        "浪漫": [
-          `【浪漫版】${state.originalNarration}，唯美的画面`,
-          `【浪漫版】${state.originalNarration}，粉色滤镜`,
-          `【浪漫版】${state.originalNarration}，甜蜜的互动`,
-          `【浪漫版】${state.originalNarration}，夕阳下的场景`,
-          `【浪漫版】${state.originalNarration}，心动的配乐`,
-        ],
-      };
-
-      const results = creativePrompts[state.creativeType] || creativePrompts["搞笑"];
-      dispatch({ type: "SET_FIELD", field: "creativeDescriptions", value: results.slice(0, state.creativeCount) });
+      const results = Array.from({ length: state.creativeCount }, (_, i) =>
+        `【版本${i + 1}】${state.originalNarration}，保留要素：${state.requiredElements}，风格版本${i + 1}`
+      );
+      dispatch({ type: "SET_FIELD", field: "creativeDescriptions", value: results });
       dispatch({ type: "SET_FIELD", field: "isGeneratingCreative", value: false });
     }, 1500);
-  }, [state.originalNarration, state.creativeType, state.creativeCount]);
+  }, [state.originalNarration, state.requiredElements, state.creativeCount]);
 
   const handleSubmit = () => {
     if (!state.taskName.trim()) return;
@@ -401,13 +365,13 @@ function CreateTaskForm({
             </div>
           )}
 
-          {/* 模式四：创意描述 - 原文案和创意类型 */}
+          {/* 模式四：生成前贴文案 - 原剧文案和需保留的要素 */}
           {generationMode === "creative" && (
             <div className={`space-y-4 transition-all duration-150 ${modeTransitioning ? "opacity-0 transform translate-y-2" : "opacity-100"}`}>
               <div>
-                <Label>原文案</Label>
+                <Label>原剧文案</Label>
                 <Textarea
-                  placeholder="请输入原始旁白文案..."
+                  placeholder="请输入前贴需要衔接的原剧剧情文案，30-60秒左右"
                   value={state.originalNarration}
                   onChange={(e) => dispatch({ type: "SET_FIELD", field: "originalNarration", value: e.target.value })}
                   rows={3}
@@ -415,22 +379,13 @@ function CreateTaskForm({
                 />
               </div>
               <div>
-                <Label>创意类型</Label>
-                <Select
-                  value={state.creativeType}
-                  onValueChange={(v) => dispatch({ type: "SET_FIELD", field: "creativeType", value: v || "" })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="选择创意类型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="搞笑">搞笑</SelectItem>
-                    <SelectItem value="感人">感人</SelectItem>
-                    <SelectItem value="热血">热血</SelectItem>
-                    <SelectItem value="悬疑">悬疑</SelectItem>
-                    <SelectItem value="浪漫">浪漫</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>需保留的要素</Label>
+                <Input
+                  placeholder="请输入生成的前贴文案中，需要保留的要素，如「围绕小女孩，父亲，卖肉写」"
+                  value={state.requiredElements}
+                  onChange={(e) => dispatch({ type: "SET_FIELD", field: "requiredElements", value: e.target.value })}
+                  className="mt-1"
+                />
               </div>
             </div>
           )}
@@ -469,7 +424,7 @@ function CreateTaskForm({
                 />
                 <Button
                   onClick={handleGenerateCreativeDescriptions}
-                  disabled={!state.originalNarration.trim() || !state.creativeType || isGeneratingCreative}
+                  disabled={!state.originalNarration.trim() || !state.requiredElements.trim() || isGeneratingCreative}
                   className="bg-orange-600 hover:bg-orange-700 gap-2"
                 >
                   {isGeneratingCreative ? (

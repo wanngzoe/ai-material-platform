@@ -1734,58 +1734,31 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
   const [splitByShot, setSplitByShot] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // 模式四：创意描述相关
+  // 模式四：生成前贴文案相关
   const [creativeDescriptions, setCreativeDescriptions] = useState<string[]>(config.creativeDescriptions || []);
-  const [creativeCount, setCreativeCount] = useState(5);
+  const [creativeCount, setCreativeCount] = useState(10);
   const [isGeneratingCreative, setIsGeneratingCreative] = useState(false);
   const [creativeEditingIndex, setCreativeEditingIndex] = useState<number | null>(null);
   const [creativeEditValue, setCreativeEditValue] = useState("");
 
-  // Mock AI 生成创意描述（模式四）
+  // Mock AI 生成前贴文案（模式四）
   const handleGenerateCreativeDescriptions = () => {
-    if (!config.originalNarration?.trim() || !config.creativeType) return;
+    if (!config.originalNarration?.trim() || !config.requiredElements?.trim()) return;
     setIsGeneratingCreative(true);
 
     setTimeout(() => {
-      const creativePrompts: Record<string, string[]> = {
-        "搞笑": [
-          `【搞笑版】${config.originalNarration}，使用夸张的表情和动作`,
-          `【搞笑版】${config.originalNarration}，添加幽默的对白`,
-          `【搞笑版】${config.originalNarration}，反转剧情`,
-          `【搞笑版】${config.originalNarration}，使用方言配音`,
-          `【搞笑版】${config.originalNarration}，恶搞风格`,
-        ],
-        "感人": [
-          `【感人版】${config.originalNarration}，缓慢深情的镜头`,
-          `【感人版】${config.originalNarration}，添加回忆片段`,
-          `【感人版】${config.originalNarration}，温情的音乐`,
-          `【感人版】${config.originalNarration}，突出情感细节`,
-          `【感人版】${config.originalNarration}，煽情的配乐`,
-        ],
-        "热血": [
-          `【热血版】${config.originalNarration}，激昂的背景音乐`,
-          `【热血版】${config.originalNarration}，快速剪辑`,
-          `【热血版】${config.originalNarration}，添加战斗画面`,
-          `【热血版】${config.originalNarration}，突出主角光环`,
-          `【热血版】${config.originalNarration}，震撼的特效`,
-        ],
-        "悬疑": [
-          `【悬疑版】${config.originalNarration}，阴暗的色调`,
-          `【悬疑版】${config.originalNarration}，紧张的配乐`,
-          `【悬疑版】${config.originalNarration}，隐藏关键信息`,
-          `【悬疑版】${config.originalNarration}，暗示结局`,
-          `【悬疑版】${config.originalNarration}，神秘的气氛`,
-        ],
-        "浪漫": [
-          `【浪漫版】${config.originalNarration}，唯美的画面`,
-          `【浪漫版】${config.originalNarration}，粉色滤镜`,
-          `【浪漫版】${config.originalNarration}，甜蜜的互动`,
-          `【浪漫版】${config.originalNarration}，夕阳下的场景`,
-          `【浪漫版】${config.originalNarration}，心动的配乐`,
-        ],
-      };
-
-      const results = creativePrompts[config.creativeType || "搞笑"] || creativePrompts["搞笑"];
+      const results = [
+        `【版本1】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本一`,
+        `【版本2】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本二`,
+        `【版本3】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本三`,
+        `【版本4】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本四`,
+        `【版本5】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本五`,
+        `【版本6】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本六`,
+        `【版本7】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本七`,
+        `【版本8】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本八`,
+        `【版本9】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本九`,
+        `【版本10】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本十`,
+      ];
       setCreativeDescriptions(results.slice(0, creativeCount));
       setIsGeneratingCreative(false);
     }, 1500);
@@ -1889,11 +1862,11 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
         {config.generationMode === "narration" && (
           <div className="col-span-2"><Label>原文案</Label><Textarea value={config.originalNarration || ""} onChange={(e) => setConfig({ ...config, originalNarration: e.target.value })} rows={3} className="mt-1" placeholder="请输入原始旁白文案..." /></div>
         )}
-        {/* 模式四：生成前贴文案 - 原文案和创意类型 */}
+        {/* 模式四：生成前贴文案 - 原剧文案和需保留的要素 */}
         {config.generationMode === "creative" && (
           <>
-            <div><Label>原文案</Label><Textarea value={config.originalNarration || ""} onChange={(e) => setConfig({ ...config, originalNarration: e.target.value })} rows={3} className="mt-1" placeholder="请输入原始旁白文案..." /></div>
-            <div><Label>创意类型</Label><Select value={config.creativeType || ""} onValueChange={(v) => setConfig({ ...config, creativeType: v || undefined })}><SelectTrigger className="mt-1"><SelectValue placeholder="选择创意类型" /></SelectTrigger><SelectContent><SelectItem value="搞笑">搞笑</SelectItem><SelectItem value="感人">感人</SelectItem><SelectItem value="热血">热血</SelectItem><SelectItem value="悬疑">悬疑</SelectItem><SelectItem value="浪漫">浪漫</SelectItem></SelectContent></Select></div>
+            <div className="col-span-2"><Label>原剧文案</Label><Textarea value={config.originalNarration || ""} onChange={(e) => setConfig({ ...config, originalNarration: e.target.value })} rows={3} className="mt-1" placeholder="请输入前贴需要衔接的原剧剧情文案，30-60秒左右" /></div>
+            <div className="col-span-2"><Label>需保留的要素</Label><Input value={config.requiredElements || ""} onChange={(e) => setConfig({ ...config, requiredElements: e.target.value })} className="mt-1" placeholder="请输入生成的前贴文案中，需要保留的要素，如「围绕小女孩，父亲，卖肉写」" /></div>
           </>
         )}
         </div></div>
@@ -1914,7 +1887,7 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
               />
               <Button
                 onClick={handleGenerateCreativeDescriptions}
-                disabled={!config.originalNarration?.trim() || !config.creativeType || isGeneratingCreative}
+                disabled={!config.originalNarration?.trim() || !config.requiredElements?.trim() || isGeneratingCreative}
                 className="bg-orange-600 hover:bg-orange-700"
               >
                 {isGeneratingCreative ? "生成中..." : "AI生成"}

@@ -22,10 +22,10 @@ export interface GenerationTaskConfig {
   textDescriptions?: string[];              // 文字生成描述列表（多条）
   derivedCount?: number;                   // 衍生数量 (1-10)
   // 模式三：仅生成旁白
-  originalNarration?: string;              // 原文案
-  // 模式四：创意描述
-  creativeType?: string;                   // 创意类型
-  creativeDescriptions?: string[];         // 创意描述列表
+  originalNarration?: string;              // 原剧文案
+  // 模式四：生成前贴文案
+  creativeDescriptions?: string[];         // 前贴文案列表
+  requiredElements?: string;               // 需保留的要素
   model: "seedance_2.0" | "wan_2.6";      // 模型
   aspectRatio: "16:9" | "9:16" | "1:1";   // 画面比例
   resolution: "720p" | "1080p" | "2k";    // 分辨率
