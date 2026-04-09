@@ -633,7 +633,7 @@ function CreateTaskForm({
           disabled={!state.taskName.trim()}
         >
           {generationMode === "narration" && "生成旁白"}
-          {generationMode === "creative" && "生成前贴文案"}
+          {generationMode === "creative" && "创建任务"}
           {(generationMode === "video" || generationMode === "text") && "创建任务"}
         </Button>
       </DialogFooter>
