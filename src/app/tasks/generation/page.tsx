@@ -1742,18 +1742,30 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
   const [creativeEditValue, setCreativeEditValue] = useState("");
   const [selectedIndexes, setSelectedIndexes] = useState<Set<number>>(new Set());
 
-  // Mock AI 生成前贴文案（模式四）
+  // Mock AI 生成前贴文案（模式四）- 追加模式
+  const MAX_TOTAL_ITEMS = 30;
   const handleGenerateCreativeDescriptions = () => {
     if (!config.originalNarration?.trim() || !config.requiredElements?.trim()) return;
+    if (creativeDescriptions.length >= MAX_TOTAL_ITEMS) return;
     setIsGeneratingCreative(true);
 
     setTimeout(() => {
-      const results = Array.from({ length: creativeCount }, (_, i) =>
-        `【版本${i + 1}】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本${i + 1}`
+      const remainingSlots = MAX_TOTAL_ITEMS - creativeDescriptions.length;
+      const countToGenerate = Math.min(creativeCount, remainingSlots);
+      const currentLength = creativeDescriptions.length;
+
+      const results = Array.from({ length: countToGenerate }, (_, i) =>
+        `【版本${currentLength + i + 1}】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本${currentLength + i + 1}`
       );
-      setCreativeDescriptions(results);
-      // 自动全选
-      setSelectedIndexes(new Set(results.map((_, i) => i)));
+
+      // 追加到现有列表
+      setCreativeDescriptions([...creativeDescriptions, ...results]);
+
+      // 保留之前选中的，自动选中新追加的
+      const newSelected = new Set(selectedIndexes);
+      results.forEach((_, i) => newSelected.add(currentLength + i));
+      setSelectedIndexes(newSelected);
+
       setIsGeneratingCreative(false);
     }, 1500);
   };
@@ -1903,10 +1915,10 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
               />
               <Button
                 onClick={handleGenerateCreativeDescriptions}
-                disabled={!config.originalNarration?.trim() || !config.requiredElements?.trim() || isGeneratingCreative}
+                disabled={!config.originalNarration?.trim() || !config.requiredElements?.trim() || isGeneratingCreative || creativeDescriptions.length >= MAX_TOTAL_ITEMS}
                 className="bg-orange-600 hover:bg-orange-700"
               >
-                {isGeneratingCreative ? "生成中..." : "AI生成"}
+                {isGeneratingCreative ? "生成中..." : creativeDescriptions.length >= MAX_TOTAL_ITEMS ? "已达上限" : "AI生成"}
               </Button>
             </div>
 
@@ -1922,7 +1934,7 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
                     className="w-4 h-4 accent-orange-600"
                   />
                   <span className="text-sm text-gray-600">全选</span>
-                  <span className="text-xs text-gray-400 ml-auto">已选择 {selectedIndexes.size} 条</span>
+                  <span className="text-xs text-gray-400 ml-auto">已选择 {selectedIndexes.size} 条 / 共 {creativeDescriptions.length}/{MAX_TOTAL_ITEMS} 条</span>
                 </div>
                 {/* 文案列表 */}
                 {creativeDescriptions.map((desc, index) => (
