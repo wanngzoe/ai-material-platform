@@ -1998,7 +1998,7 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
           {config.generationMode === "video" && <Button className="bg-blue-600 hover:bg-blue-700" onClick={onCreated}>创建任务</Button>}
           {config.generationMode === "text" && <Button className="bg-purple-600 hover:bg-purple-700" onClick={onCreated}>创建任务</Button>}
           {config.generationMode === "narration" && <Button className="bg-green-600 hover:bg-green-700">生成旁白</Button>}
-          {config.generationMode === "creative" && <Button className="bg-orange-600 hover:bg-orange-700">生成前贴文案</Button>}
+          {config.generationMode === "creative" && <Button className="bg-orange-600 hover:bg-orange-700" onClick={onCreated}>创建任务</Button>}
         </div>
       </CardContent></Card>
     </div>
