@@ -189,9 +189,9 @@ function formReducer(state: FormState, action: FormAction): FormState {
 
 // 生成模式配置
 const modeConfig = {
-  video: { label: "参考视频生成", icon: "📹", desc: "保留旁白故事", color: "blue" },
+  video: { label: "参考生成视频", icon: "📹", desc: "保留旁白故事", color: "blue" },
   text: { label: "文案生成视频", icon: "✏️", desc: "输入前贴文案，生成视频", color: "purple" },
-  narration: { label: "仅生成旁白", icon: "🎬", desc: "保留画面", color: "green" },
+  narration: { label: "参考生成旁白", icon: "🎬", desc: "保留画面", color: "green" },
   creative: { label: "生成前贴文案", icon: "💡", desc: "输入原剧剧情，生成前贴文案", color: "orange" },
 } as const;
 

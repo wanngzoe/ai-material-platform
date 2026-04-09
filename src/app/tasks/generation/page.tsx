@@ -1823,7 +1823,7 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
                   : "border-gray-200 hover:border-gray-300"
               }`}
             >
-              <div className="font-medium text-lg">📹 参考视频生成</div>
+              <div className="font-medium text-lg">📹 参考生成视频</div>
               <div className="text-sm text-gray-500 mt-1">保留旁白故事，生成新视频</div>
             </button>
             <button
@@ -1847,7 +1847,7 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
                   : "border-gray-200 hover:border-gray-300"
               }`}
             >
-              <div className="font-medium text-lg">🎬 仅生成旁白</div>
+              <div className="font-medium text-lg">🎬 参考生成旁白</div>
               <div className="text-sm text-gray-500 mt-1">保留画面，重新生成旁白</div>
             </button>
             <button
