@@ -1740,6 +1740,7 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
   const [isGeneratingCreative, setIsGeneratingCreative] = useState(false);
   const [creativeEditingIndex, setCreativeEditingIndex] = useState<number | null>(null);
   const [creativeEditValue, setCreativeEditValue] = useState("");
+  const [selectedIndexes, setSelectedIndexes] = useState<Set<number>>(new Set());
 
   // Mock AI 生成前贴文案（模式四）
   const handleGenerateCreativeDescriptions = () => {
@@ -1747,19 +1748,12 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
     setIsGeneratingCreative(true);
 
     setTimeout(() => {
-      const results = [
-        `【版本1】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本一`,
-        `【版本2】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本二`,
-        `【版本3】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本三`,
-        `【版本4】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本四`,
-        `【版本5】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本五`,
-        `【版本6】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本六`,
-        `【版本7】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本七`,
-        `【版本8】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本八`,
-        `【版本9】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本九`,
-        `【版本10】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本十`,
-      ];
-      setCreativeDescriptions(results.slice(0, creativeCount));
+      const results = Array.from({ length: creativeCount }, (_, i) =>
+        `【版本${i + 1}】${config.originalNarration}，保留要素：${config.requiredElements}，风格版本${i + 1}`
+      );
+      setCreativeDescriptions(results);
+      // 自动全选
+      setSelectedIndexes(new Set(results.map((_, i) => i)));
       setIsGeneratingCreative(false);
     }, 1500);
   };
@@ -1778,6 +1772,28 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
 
   const handleDeleteCreativeDescription = (index: number) => {
     setCreativeDescriptions(creativeDescriptions.filter((_, i) => i !== index));
+    const newSelected = new Set(selectedIndexes);
+    newSelected.delete(index);
+    // 重新索引
+    setSelectedIndexes(new Set(Array.from(newSelected).map(i => i > index ? i - 1 : i)));
+  };
+
+  const toggleSelectIndex = (index: number) => {
+    const newSelected = new Set(selectedIndexes);
+    if (newSelected.has(index)) {
+      newSelected.delete(index);
+    } else {
+      newSelected.add(index);
+    }
+    setSelectedIndexes(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIndexes.size === creativeDescriptions.length) {
+      setSelectedIndexes(new Set());
+    } else {
+      setSelectedIndexes(new Set(creativeDescriptions.map((_, i) => i)));
+    }
   };
 
   return (
@@ -1897,8 +1913,38 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
             {/* 前贴文案列表 */}
             {creativeDescriptions.length > 0 && (
               <div className="space-y-2 max-h-64 overflow-y-auto">
+                {/* 全选行 */}
+                <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                  <input
+                    type="checkbox"
+                    checked={selectedIndexes.size === creativeDescriptions.length}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 accent-orange-600"
+                  />
+                  <span className="text-sm text-gray-600">全选</span>
+                  <span className="text-xs text-gray-400 ml-auto">已选择 {selectedIndexes.size} 条</span>
+                </div>
+                {/* 文案列表 */}
                 {creativeDescriptions.map((desc, index) => (
-                  <div key={index} className="flex items-start gap-2 p-2 bg-orange-50 rounded-lg">
+                  <div
+                    key={index}
+                    className={`flex items-start gap-2 p-3 rounded-lg border-2 transition-colors cursor-pointer ${
+                      selectedIndexes.has(index)
+                        ? "bg-orange-50 border-orange-400"
+                        : "bg-white border-transparent hover:border-gray-200"
+                    }`}
+                    onClick={() => {
+                      if (creativeEditingIndex === index) return;
+                      toggleSelectIndex(index);
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIndexes.has(index)}
+                      onChange={() => toggleSelectIndex(index)}
+                      className="w-4 h-4 accent-orange-600 mt-1"
+                      onClick={(e) => e.stopPropagation()}
+                    />
                     <span className="text-sm text-orange-600 mt-2 w-6">{index + 1}.</span>
                     {creativeEditingIndex === index ? (
                       <Textarea
@@ -1911,11 +1957,13 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
                         rows={2}
                         className="flex-1"
                         autoFocus
+                        onClick={(e) => e.stopPropagation()}
                       />
                     ) : (
                       <div
                         className="flex-1 text-sm py-1 px-2 cursor-pointer hover:bg-orange-100 rounded"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setCreativeEditingIndex(index);
                           setCreativeEditValue(desc);
                         }}
@@ -1926,8 +1974,11 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-red-500 hover:text-red-600"
-                      onClick={() => handleDeleteCreativeDescription(index)}
+                      className="text-gray-400 hover:text-red-500"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteCreativeDescription(index);
+                      }}
                     >
                       ✕
                     </Button>
@@ -1998,7 +2049,15 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
           {config.generationMode === "video" && <Button className="bg-blue-600 hover:bg-blue-700" onClick={onCreated}>创建任务</Button>}
           {config.generationMode === "text" && <Button className="bg-purple-600 hover:bg-purple-700" onClick={onCreated}>创建任务</Button>}
           {config.generationMode === "narration" && <Button className="bg-green-600 hover:bg-green-700">生成旁白</Button>}
-          {config.generationMode === "creative" && <Button className="bg-orange-600 hover:bg-orange-700" onClick={onCreated}>创建任务</Button>}
+          {config.generationMode === "creative" && (
+            <Button
+              className="bg-orange-600 hover:bg-orange-700"
+              onClick={onCreated}
+              disabled={selectedIndexes.size === 0}
+            >
+              {selectedIndexes.size > 0 ? `已选择 ${selectedIndexes.size} 条，创建任务` : "请先选择文案"}
+            </Button>
+          )}
         </div>
       </CardContent></Card>
     </div>
