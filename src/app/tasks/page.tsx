@@ -190,9 +190,9 @@ function formReducer(state: FormState, action: FormAction): FormState {
 // 生成模式配置
 const modeConfig = {
   video: { label: "参考视频生成", icon: "📹", desc: "保留旁白故事", color: "blue" },
-  text: { label: "文字生成视频", icon: "✏️", desc: "输入描述生成", color: "purple" },
+  text: { label: "文案生成视频", icon: "✏️", desc: "输入前贴文案，生成视频", color: "purple" },
   narration: { label: "仅生成旁白", icon: "🎬", desc: "保留画面", color: "green" },
-  creative: { label: "创意描述生成", icon: "💡", desc: "AI创意描述", color: "orange" },
+  creative: { label: "生成前贴文案", icon: "💡", desc: "输入原剧剧情，生成前贴文案", color: "orange" },
 } as const;
 
 // 模式颜色映射
@@ -454,7 +454,7 @@ function CreateTaskForm({
             <div className={`border rounded-xl p-4 bg-gradient-to-br from-orange-50 to-white transition-all duration-150 ${modeTransitioning ? "opacity-0 transform translate-y-2" : "opacity-100"}`}>
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-orange-500" />
-                创意描述
+                前贴文案
               </h3>
               <div className="flex items-center gap-4 mb-4">
                 <Label className="whitespace-nowrap text-sm">生成数量: {state.creativeCount}</Label>
@@ -678,7 +678,7 @@ function CreateTaskForm({
           disabled={!state.taskName.trim()}
         >
           {generationMode === "narration" && "生成旁白"}
-          {generationMode === "creative" && "生成创意描述"}
+          {generationMode === "creative" && "生成前贴文案"}
           {(generationMode === "video" || generationMode === "text") && "创建任务"}
         </Button>
       </DialogFooter>
