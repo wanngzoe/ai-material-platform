@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { materials } from "@/lib/mockData";
-import { GenerationTask, GenerationResult, VideoGenerationStatus } from "@/lib/types";
+import { GenerationTask, GenerationResult, VideoGenerationStatus, Material } from "@/lib/types";
 
 const mockTask: GenerationTask = {
   id: "QG-0001",
@@ -570,6 +570,7 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
   const [voiceRemovalOpen, setVoiceRemovalOpen] = useState(false);
   const [subtitleEraseOpen, setSubtitleEraseOpen] = useState(false);
   const [subtitleEraseShotId, setSubtitleEraseShotId] = useState<string | null>(null);
+  const [materialPickerOpen, setMaterialPickerOpen] = useState(false);
 
   const handleVideoModelChange = (value: string | null) => setVideoModel(value || "seedance_2.0");
   const handleImageModelChange = (value: string | null) => setImageModel(value || "jimeng_5.0");
@@ -944,9 +945,20 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
                 })}
                 {/* 添加按钮 */}
                 {referenceImages.length + generatedImages.length < 12 && (
-                  <button className="aspect-square bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 flex items-center justify-center text-gray-400 hover:text-gray-500" onClick={() => setReferenceImages(prev => [...prev, `https://picsum.photos/seed/ref${Date.now()}/200/200`])}>
-                    +
-                  </button>
+                  <>
+                    {/* 从资产库选取按钮 */}
+                    <button
+                      className="aspect-square bg-blue-50 rounded-lg border-2 border-dashed border-blue-300 hover:border-blue-400 flex flex-col items-center justify-center text-blue-400 hover:text-blue-500"
+                      onClick={() => setMaterialPickerOpen(true)}
+                    >
+                      <span className="text-2xl">📁</span>
+                      <span className="text-xs mt-1">资产库</span>
+                    </button>
+                    {/* 本地上传按钮 */}
+                    <button className="aspect-square bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 flex items-center justify-center text-gray-400 hover:text-gray-500" onClick={() => setReferenceImages(prev => [...prev, `https://picsum.photos/seed/ref${Date.now()}/200/200`])}>
+                      +
+                    </button>
+                  </>
                 )}
               </div>
               {referenceImages.length === 0 && generatedImages.length === 0 && (
@@ -1020,6 +1032,16 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
               subtitleErasedVideoUrl: newVideoUrl,
               subtitleEraseHistory: [...(shot.subtitleEraseHistory || []), historyItem],
             });
+          }
+        }}
+      />
+      {/* 资产库选择器 */}
+      <MaterialPickerDialog
+        open={materialPickerOpen}
+        onClose={() => setMaterialPickerOpen(false)}
+        onSelect={(material) => {
+          if (material.thumbnail) {
+            setReferenceImages(prev => [...prev, material.thumbnail]);
           }
         }}
       />
@@ -1757,6 +1779,92 @@ function SubtitleEraseDrawer({ open, onClose, shot, onSave }: {
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+// 资产库选择器对话框
+function MaterialPickerDialog({ open, onClose, onSelect }: {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (material: Material) => void;
+}) {
+  const [activeTab, setActiveTab] = useState<"前贴" | "投放" | "原剧">("前贴");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const categories = ["前贴", "投放", "原剧"] as const;
+
+  const filteredMaterials = useMemo(() => {
+    let result = materials[activeTab];
+    if (searchTerm) {
+      result = result.filter((m) => m.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }
+    return result;
+  }, [activeTab, searchTerm]);
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>从资产库选择</DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Tab切换 */}
+          <div className="flex gap-2 mb-4">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveTab(cat)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === cat
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+          {/* 搜索 */}
+          <div className="mb-4">
+            <Input
+              placeholder="搜索素材名称..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          {/* 素材列表 */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="grid grid-cols-4 gap-3">
+              {filteredMaterials.map((material) => (
+                <div
+                  key={material.id}
+                  className="aspect-video bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 relative group"
+                  onClick={() => { onSelect(material); onClose(); }}
+                >
+                  <img
+                    src={material.thumbnail}
+                    alt={material.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                    <div className="opacity-0 group-hover:opacity-100 bg-white/90 rounded px-2 py-1 text-xs">
+                      选择
+                    </div>
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                    <div className="text-white text-xs truncate">{material.name}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {filteredMaterials.length === 0 && (
+              <div className="text-center py-12 text-gray-400">暂无素材</div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
