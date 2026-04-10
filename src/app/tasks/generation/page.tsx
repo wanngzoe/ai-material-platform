@@ -103,6 +103,9 @@ interface Shot {
   errorMessage?: string;
   history?: VideoHistoryItem[];
   videoModel?: string;
+  // 字幕擦除
+  subtitleErasedVideoUrl?: string;  // 当前字幕擦除后的视频
+  subtitleEraseHistory?: VideoHistoryItem[];  // 字幕擦除历史
 }
 
 interface VideoHistoryItem {
@@ -565,6 +568,8 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
     "https://picsum.photos/seed/ref3/200/200",
   ]);
   const [voiceRemovalOpen, setVoiceRemovalOpen] = useState(false);
+  const [subtitleEraseOpen, setSubtitleEraseOpen] = useState(false);
+  const [subtitleEraseShotId, setSubtitleEraseShotId] = useState<string | null>(null);
 
   const handleVideoModelChange = (value: string | null) => setVideoModel(value || "seedance_2.0");
   const handleImageModelChange = (value: string | null) => setImageModel(value || "jimeng_5.0");
@@ -738,6 +743,11 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
                       {shot.history && shot.history.length > 0 && (
                         <Button variant="outline" size="sm" className="text-orange-600 border-orange-200 hover:bg-orange-50" onClick={() => setHistoryShotId(shot.id)}>
                           📜 历史版本 ({shot.history.length})
+                        </Button>
+                      )}
+                      {shot.videoUrl && (
+                        <Button variant="outline" size="sm" className="text-purple-600 border-purple-200 hover:bg-purple-50" onClick={() => { setSubtitleEraseShotId(shot.id); setSubtitleEraseOpen(true); }}>
+                          ✏️ 字幕擦除
                         </Button>
                       )}
                       <Button variant="ghost" size="sm" className="text-gray-400 hover:text-red-500" onClick={() => setDeleteConfirmId(shot.id)} title="删除分镜">🗑️</Button>
@@ -990,6 +1000,29 @@ function EditDrawerV2({ open, onClose, result, onSave }: {
       </SheetContent>
       {/* 去配音抽屉 */}
       <VoiceRemovalDrawer open={voiceRemovalOpen} onClose={() => setVoiceRemovalOpen(false)} result={result} />
+      {/* 字幕擦除抽屉 */}
+      <SubtitleEraseDrawer
+        open={subtitleEraseOpen}
+        onClose={() => { setSubtitleEraseOpen(false); setSubtitleEraseShotId(null); }}
+        shot={subtitleEraseShotId ? shots.find(s => s.id === subtitleEraseShotId) || null : null}
+        onSave={(shotId, newVideoUrl) => {
+          // 保存字幕擦除结果到历史记录
+          const shot = shots.find(s => s.id === shotId);
+          if (shot) {
+            const historyItem: VideoHistoryItem = {
+              id: `se${Date.now()}`,
+              videoUrl: shot.subtitleErasedVideoUrl || shot.videoUrl || "",
+              prompt: "字幕擦除",
+              duration: shot.duration,
+              createTime: new Date().toLocaleString("zh-CN"),
+            };
+            updateShot(shotId, {
+              subtitleErasedVideoUrl: newVideoUrl,
+              subtitleEraseHistory: [...(shot.subtitleEraseHistory || []), historyItem],
+            });
+          }
+        }}
+      />
       <Dialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>删除分镜？</DialogTitle><DialogDescription>删除后，该分镜下的视频、提示词等素材将被清空且无法找回。</DialogDescription></DialogHeader>
@@ -1601,6 +1634,127 @@ function VoiceRemovalDrawer({ open, onClose, result }: {
             {toast}
           </div>
         )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// 字幕擦除抽屉组件
+function SubtitleEraseDrawer({ open, onClose, shot, onSave }: {
+  open: boolean;
+  onClose: () => void;
+  shot: Shot | null;
+  onSave: (shotId: string, newVideoUrl: string) => void;
+}) {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [subtitleFile, setSubtitleFile] = useState<File | null>(null);
+  const [previewResult, setPreviewResult] = useState<string | null>(null);
+
+  if (!shot) return null;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) setSubtitleFile(file);
+  };
+
+  const handleErase = () => {
+    setIsProcessing(true);
+    // 模拟字幕擦除处理
+    setTimeout(() => {
+      // 生成一个新的视频URL（mock）
+      const newVideoUrl = `https://picsum.photos/seed/erase${Date.now()}/640/360`;
+      setPreviewResult(newVideoUrl);
+      setIsProcessing(false);
+    }, 2000);
+  };
+
+  const handleSave = () => {
+    if (previewResult) {
+      onSave(shot.id, previewResult);
+      setPreviewResult(null);
+      setSubtitleFile(null);
+      onClose();
+    }
+  };
+
+  const handleClose = () => {
+    setPreviewResult(null);
+    setSubtitleFile(null);
+    onClose();
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={handleClose}>
+      <SheetContent className="w-[95%] !max-w-[95%] flex flex-col">
+        <SheetHeader className="py-3">
+          <SheetTitle>字幕擦除 - 分镜 {shot.id}</SheetTitle>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* 视频预览 */}
+          <div className="aspect-[9/16] bg-gray-100 rounded-lg overflow-hidden max-w-xs mx-auto">
+            <video
+              src={previewResult || shot.videoUrl}
+              className="w-full h-full object-contain"
+              controls
+            />
+          </div>
+
+          {/* 字幕文件上传 */}
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+            <div className="text-3xl mb-2">📄</div>
+            <div className="text-sm text-gray-600 mb-2">
+              {subtitleFile ? subtitleFile.name : "上传字幕文件（SRT/ASS格式）"}
+            </div>
+            <input
+              type="file"
+              accept=".srt,.ass,.txt"
+              onChange={handleFileChange}
+              className="hidden"
+              id="subtitle-file"
+            />
+            <label htmlFor="subtitle-file" className="cursor-pointer inline-flex items-center justify-center gap-2 py-1 px-3 text-sm border border-gray-300 rounded-md hover:bg-gray-50">
+              {subtitleFile ? "重新上传" : "选择文件"}
+            </label>
+          </div>
+
+          {/* 历史记录 */}
+          {shot.subtitleEraseHistory && shot.subtitleEraseHistory.length > 0 && (
+            <div>
+              <div className="text-sm font-medium text-gray-700 mb-2">历史记录</div>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {shot.subtitleEraseHistory.map((item, idx) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-2 p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100"
+                    onClick={() => setPreviewResult(item.videoUrl)}
+                  >
+                    <span className="text-xs text-gray-500">版本{shot.subtitleEraseHistory!.length - idx}</span>
+                    <span className="text-xs text-gray-400">{item.createTime}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 底部操作 */}
+        <div className="border-t bg-white px-6 py-4 flex justify-end items-center gap-3">
+          <Button variant="outline" onClick={handleClose}>取消</Button>
+          <Button
+            onClick={handleErase}
+            disabled={!subtitleFile || isProcessing}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            {isProcessing ? "处理中..." : "开始擦除"}
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={!previewResult}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            保存结果
+          </Button>
+        </div>
       </SheetContent>
     </Sheet>
   );
