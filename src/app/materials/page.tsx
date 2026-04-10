@@ -54,7 +54,7 @@ function MaterialList({
   startDate,
   endDate,
 }: {
-  category: "前贴" | "投放" | "原剧";
+  category: "公共资产" | "团队资产" | "个人资产";
   searchTerm: string;
   startDate: string;
   endDate: string;
@@ -122,12 +122,12 @@ function MaterialList({
 }
 
 export default function MaterialsPage() {
-  const [activeTab, setActiveTab] = useState("前贴");
+  const [activeTab, setActiveTab] = useState("公共资产");
   const [searchTerm, setSearchTerm] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const categories = ["前贴", "投放", "原剧"] as const;
+  const categories = ["公共资产", "团队资产", "个人资产"] as const;
 
   return (
     <div className="p-6">

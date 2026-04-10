@@ -334,7 +334,7 @@ function CreateTaskForm({
                   <SelectValue placeholder="选择参考视频" />
                 </SelectTrigger>
                 <SelectContent>
-                  {materials.前贴.map((video) => (
+                  {materials.公共资产.map((video) => (
                     <SelectItem key={video.id} value={video.id}>
                       <div className="flex items-center gap-2">
                         <img

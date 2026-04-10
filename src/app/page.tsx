@@ -15,14 +15,14 @@ const tasksData = tasks;
 
 export default function Workspace() {
   const totalMaterials =
-    materials.前贴.length + materials.投放.length + materials.原剧.length;
+    materials.公共资产.length + materials.团队资产.length + materials.个人资产.length;
   const totalTasks = tasksData.前贴生成.length + tasksData.素材拼接.length;
 
   // Get recent materials (sorted by upload time)
   const allMaterials = [
-    ...materials.前贴,
-    ...materials.投放,
-    ...materials.原剧,
+    ...materials.公共资产,
+    ...materials.团队资产,
+    ...materials.个人资产,
   ].sort((a, b) => b.uploadTime.localeCompare(a.uploadTime));
 
   // Get recent tasks (sorted by create time)
@@ -45,14 +45,14 @@ export default function Workspace() {
         </Card>
         <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
           <CardContent className="p-6">
-            <div className="text-purple-100 text-sm">前贴素材</div>
-            <div className="text-3xl font-bold mt-2">{materials.前贴.length}</div>
+            <div className="text-purple-100 text-sm">公共素材</div>
+            <div className="text-3xl font-bold mt-2">{materials.公共资产.length}</div>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
           <CardContent className="p-6">
-            <div className="text-green-100 text-sm">投放素材</div>
-            <div className="text-3xl font-bold mt-2">{materials.投放.length}</div>
+            <div className="text-green-100 text-sm">团队素材</div>
+            <div className="text-3xl font-bold mt-2">{materials.团队资产.length}</div>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">

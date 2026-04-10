@@ -2,7 +2,7 @@ import { MaterialsData, TasksData } from "./types";
 
 // Fixed data to avoid hydration mismatch
 export const materials: MaterialsData = {
-  前贴: [
+  公共资产: [
     { id: "QT-0001", name: "前贴广告片段_1", duration: "15秒", uploadTime: "2026-03-15 10:30", thumbnail: "https://picsum.photos/seed/qt1/320/180" },
     { id: "QT-0002", name: "前贴广告片段_2", duration: "30秒", uploadTime: "2026-03-14 14:20", thumbnail: "https://picsum.photos/seed/qt2/320/180" },
     { id: "QT-0003", name: "前贴广告片段_3", duration: "20秒", uploadTime: "2026-03-13 09:15", thumbnail: "https://picsum.photos/seed/qt3/320/180" },
@@ -12,7 +12,7 @@ export const materials: MaterialsData = {
     { id: "QT-0007", name: "前贴广告片段_7", duration: "18秒", uploadTime: "2026-03-09 08:45", thumbnail: "https://picsum.photos/seed/qt7/320/180" },
     { id: "QT-0008", name: "前贴广告片段_8", duration: "40秒", uploadTime: "2026-03-08 15:10", thumbnail: "https://picsum.photos/seed/qt8/320/180" },
   ],
-  投放: [
+  团队资产: [
     { id: "TF-0001", name: "投放素材_1", duration: "60秒", uploadTime: "2026-03-18 10:00", thumbnail: "https://picsum.photos/seed/tf1/320/180", status: "投放中" },
     { id: "TF-0002", name: "投放素材_2", duration: "45秒", uploadTime: "2026-03-17 14:30", thumbnail: "https://picsum.photos/seed/tf2/320/180", status: "已结束" },
     { id: "TF-0003", name: "投放素材_3", duration: "90秒", uploadTime: "2026-03-16 09:20", thumbnail: "https://picsum.photos/seed/tf3/320/180", status: "待审核" },
@@ -24,7 +24,7 @@ export const materials: MaterialsData = {
     { id: "TF-0009", name: "投放素材_9", duration: "55秒", uploadTime: "2026-03-10 10:25", thumbnail: "https://picsum.photos/seed/tf9/320/180", status: "投放中" },
     { id: "TF-0010", name: "投放素材_10", duration: "85秒", uploadTime: "2026-03-09 12:40", thumbnail: "https://picsum.photos/seed/tf10/320/180", status: "已结束" },
   ],
-  原剧: [
+  个人资产: [
     { id: "YJ-0001", name: "原剧第1集", duration: "2400秒", uploadTime: "2026-01-05 08:00", thumbnail: "https://picsum.photos/seed/yj1/320/180", episode: "第1集" },
     { id: "YJ-0002", name: "原剧第2集", duration: "2580秒", uploadTime: "2026-01-06 08:00", thumbnail: "https://picsum.photos/seed/yj2/320/180", episode: "第2集" },
     { id: "YJ-0003", name: "原剧第3集", duration: "2520秒", uploadTime: "2026-01-07 08:00", thumbnail: "https://picsum.photos/seed/yj3/320/180", episode: "第3集" },

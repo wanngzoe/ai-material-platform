@@ -89,9 +89,9 @@ export interface Task {
 }
 
 export interface MaterialsData {
-  前贴: Material[];
-  投放: Material[];
-  原剧: Material[];
+  公共资产: Material[];
+  团队资产: Material[];
+  个人资产: Material[];
 }
 
 export interface TasksData {

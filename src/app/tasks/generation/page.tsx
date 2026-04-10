@@ -41,7 +41,7 @@ const mockTask: GenerationTask = {
     id: "QG-0001",
     name: "前贴生成任务_1",
     generationMode: "video",
-    referenceVideo: materials.前贴[0],
+    referenceVideo: materials.公共资产[0],
     textPrompt: "",
     model: "seedance_2.0",
     aspectRatio: "16:9",
@@ -1788,10 +1788,10 @@ function MaterialPickerDialog({ open, onClose, onSelect }: {
   onClose: () => void;
   onSelect: (material: Material) => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"前贴" | "投放" | "原剧">("前贴");
+  const [activeTab, setActiveTab] = useState<"公共资产" | "团队资产" | "个人资产">("公共资产");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const categories = ["前贴", "投放", "原剧"] as const;
+  const categories = ["公共资产", "团队资产", "个人资产"] as const;
 
   const filteredMaterials = useMemo(() => {
     let result = materials[activeTab];
