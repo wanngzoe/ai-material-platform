@@ -774,7 +774,22 @@ function TaskTable({
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-gray-900 truncate">{task.name}</div>
-                    <div className="text-sm text-gray-500">{task.id}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm text-gray-500">{task.id}</span>
+                      {task.generationMode && (
+                        <Badge variant="outline" className={`text-xs ${
+                          task.generationMode === "video" ? "border-blue-400 text-blue-600" :
+                          task.generationMode === "text" ? "border-purple-400 text-purple-600" :
+                          task.generationMode === "narration" ? "border-green-400 text-green-600" :
+                          "border-orange-400 text-orange-600"
+                        }`}>
+                          {task.generationMode === "video" ? "📹 参考生成视频" :
+                           task.generationMode === "text" ? "✏️ 文案生成视频" :
+                           task.generationMode === "narration" ? "🎬 参考生成旁白" :
+                           "💡 生成前贴文案"}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   <div className="text-xs text-gray-400 ml-2 whitespace-nowrap">
                     {task.createTime}
