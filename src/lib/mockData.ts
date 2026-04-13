@@ -1,4 +1,4 @@
-import { MaterialsData, TasksData } from "./types";
+import { MaterialsData, TasksData, GenerationMode } from "./types";
 
 // Fixed data to avoid hydration mismatch
 export const materials: MaterialsData = {
@@ -42,21 +42,21 @@ export const materials: MaterialsData = {
 
 export const tasks: TasksData = {
   前贴生成: [
-    { id: "QG-0001", name: "前贴生成任务_1", type: "前贴生成", status: "已完成", createTime: "2026-03-20 10:30", endTime: "2026-03-20 10:45", thumbnail: "https://picsum.photos/seed/qg1/320/180" },
-    { id: "QG-0002", name: "前贴生成任务_2", type: "前贴生成", status: "处理中", createTime: "2026-03-20 11:00", endTime: "-", thumbnail: "https://picsum.photos/seed/qg2/320/180" },
-    { id: "QG-0003", name: "前贴生成任务_3", type: "前贴生成", status: "排队中", createTime: "2026-03-20 11:15", endTime: "-", thumbnail: "https://picsum.photos/seed/qg3/320/180" },
-    { id: "QG-0004", name: "前贴生成任务_4", type: "前贴生成", status: "已完成", createTime: "2026-03-19 14:30", endTime: "2026-03-19 14:50", thumbnail: "https://picsum.photos/seed/qg4/320/180" },
-    { id: "QG-0005", name: "前贴生成任务_5", type: "前贴生成", status: "失败", createTime: "2026-03-19 15:00", endTime: "2026-03-19 15:05", thumbnail: "https://picsum.photos/seed/qg5/320/180" },
-    { id: "QG-0006", name: "前贴生成任务_6", type: "前贴生成", status: "已完成", createTime: "2026-03-18 09:20", endTime: "2026-03-18 09:35", thumbnail: "https://picsum.photos/seed/qg6/320/180" },
-    { id: "QG-0007", name: "前贴生成任务_7", type: "前贴生成", status: "处理中", createTime: "2026-03-18 10:00", endTime: "-", thumbnail: "https://picsum.photos/seed/qg7/320/180" },
-    { id: "QG-0008", name: "前贴生成任务_8", type: "前贴生成", status: "已完成", createTime: "2026-03-17 16:30", endTime: "2026-03-17 16:45", thumbnail: "https://picsum.photos/seed/qg8/320/180" },
-    { id: "QG-0009", name: "前贴生成任务_9", type: "前贴生成", status: "排队中", createTime: "2026-03-17 17:00", endTime: "-", thumbnail: "https://picsum.photos/seed/qg9/320/180" },
-    { id: "QG-0010", name: "前贴生成任务_10", type: "前贴生成", status: "已完成", createTime: "2026-03-16 08:15", endTime: "2026-03-16 08:30", thumbnail: "https://picsum.photos/seed/qg10/320/180" },
-    { id: "QG-0011", name: "前贴生成任务_11", type: "前贴生成", status: "已完成", createTime: "2026-03-15 13:45", endTime: "2026-03-15 14:00", thumbnail: "https://picsum.photos/seed/qg11/320/180" },
-    { id: "QG-0012", name: "前贴生成任务_12", type: "前贴生成", status: "处理中", createTime: "2026-03-14 11:20", endTime: "-", thumbnail: "https://picsum.photos/seed/qg12/320/180" },
-    { id: "QG-0013", name: "前贴生成任务_13", type: "前贴生成", status: "已完成", createTime: "2026-03-13 15:30", endTime: "2026-03-13 15:45", thumbnail: "https://picsum.photos/seed/qg13/320/180" },
-    { id: "QG-0014", name: "前贴生成任务_14", type: "前贴生成", status: "失败", createTime: "2026-03-12 10:00", endTime: "2026-03-12 10:05", thumbnail: "https://picsum.photos/seed/qg14/320/180" },
-    { id: "QG-0015", name: "前贴生成任务_15", type: "前贴生成", status: "已完成", createTime: "2026-03-11 09:30", endTime: "2026-03-11 09:45", thumbnail: "https://picsum.photos/seed/qg15/320/180" },
+    { id: "QG-0001", name: "前贴生成任务_1", type: "前贴生成", status: "已完成", createTime: "2026-03-20 10:30", endTime: "2026-03-20 10:45", thumbnail: "https://picsum.photos/seed/qg1/320/180", generationMode: "video" },
+    { id: "QG-0002", name: "前贴生成任务_2", type: "前贴生成", status: "处理中", createTime: "2026-03-20 11:00", endTime: "-", thumbnail: "https://picsum.photos/seed/qg2/320/180", generationMode: "text" },
+    { id: "QG-0003", name: "前贴生成任务_3", type: "前贴生成", status: "排队中", createTime: "2026-03-20 11:15", endTime: "-", thumbnail: "https://picsum.photos/seed/qg3/320/180", generationMode: "narration" },
+    { id: "QG-0004", name: "前贴生成任务_4", type: "前贴生成", status: "已完成", createTime: "2026-03-19 14:30", endTime: "2026-03-19 14:50", thumbnail: "https://picsum.photos/seed/qg4/320/180", generationMode: "creative" },
+    { id: "QG-0005", name: "前贴生成任务_5", type: "前贴生成", status: "失败", createTime: "2026-03-19 15:00", endTime: "2026-03-19 15:05", thumbnail: "https://picsum.photos/seed/qg5/320/180", generationMode: "video" },
+    { id: "QG-0006", name: "前贴生成任务_6", type: "前贴生成", status: "已完成", createTime: "2026-03-18 09:20", endTime: "2026-03-18 09:35", thumbnail: "https://picsum.photos/seed/qg6/320/180", generationMode: "text" },
+    { id: "QG-0007", name: "前贴生成任务_7", type: "前贴生成", status: "处理中", createTime: "2026-03-18 10:00", endTime: "-", thumbnail: "https://picsum.photos/seed/qg7/320/180", generationMode: "narration" },
+    { id: "QG-0008", name: "前贴生成任务_8", type: "前贴生成", status: "已完成", createTime: "2026-03-17 16:30", endTime: "2026-03-17 16:45", thumbnail: "https://picsum.photos/seed/qg8/320/180", generationMode: "creative" },
+    { id: "QG-0009", name: "前贴生成任务_9", type: "前贴生成", status: "排队中", createTime: "2026-03-17 17:00", endTime: "-", thumbnail: "https://picsum.photos/seed/qg9/320/180", generationMode: "video" },
+    { id: "QG-0010", name: "前贴生成任务_10", type: "前贴生成", status: "已完成", createTime: "2026-03-16 08:15", endTime: "2026-03-16 08:30", thumbnail: "https://picsum.photos/seed/qg10/320/180", generationMode: "text" },
+    { id: "QG-0011", name: "前贴生成任务_11", type: "前贴生成", status: "已完成", createTime: "2026-03-15 13:45", endTime: "2026-03-15 14:00", thumbnail: "https://picsum.photos/seed/qg11/320/180", generationMode: "narration" },
+    { id: "QG-0012", name: "前贴生成任务_12", type: "前贴生成", status: "处理中", createTime: "2026-03-14 11:20", endTime: "-", thumbnail: "https://picsum.photos/seed/qg12/320/180", generationMode: "creative" },
+    { id: "QG-0013", name: "前贴生成任务_13", type: "前贴生成", status: "已完成", createTime: "2026-03-13 15:30", endTime: "2026-03-13 15:45", thumbnail: "https://picsum.photos/seed/qg13/320/180", generationMode: "video" },
+    { id: "QG-0014", name: "前贴生成任务_14", type: "前贴生成", status: "失败", createTime: "2026-03-12 10:00", endTime: "2026-03-12 10:05", thumbnail: "https://picsum.photos/seed/qg14/320/180", generationMode: "text" },
+    { id: "QG-0015", name: "前贴生成任务_15", type: "前贴生成", status: "已完成", createTime: "2026-03-11 09:30", endTime: "2026-03-11 09:45", thumbnail: "https://picsum.photos/seed/qg15/320/180", generationMode: "narration" },
   ],
   素材拼接: [
     { id: "PJ-0001", name: "素材拼接任务_1", type: "素材拼接", status: "已完成", createTime: "2026-03-20 09:00", endTime: "2026-03-20 09:20", thumbnail: "https://picsum.photos/seed/pj1/320/180" },
