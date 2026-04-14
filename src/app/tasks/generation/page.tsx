@@ -132,395 +132,7 @@ function StatusBadge({ status, errorMessage }: { status: VideoGenerationStatus; 
   );
 }
 
-function EditDrawer({ open, onClose, result, onSave }: {
-  open: boolean;
-  onClose: () => void;
-  result: GenerationResult;
-  onSave: (shots: Shot[]) => void;
-}) {
-  const defaultPrompt = `整体风格: 电影质感，恐怖奇幻与希腊神话史诗风格的结合，开场是温馨餐厅的暖色调，后半段是宏伟宫殿的明亮金色调，充满戏剧性和视觉冲击力。
-
-分镜1 (00:00-00:01):
-[00:00] 中景：在一个灯光温暖的美式餐厅里，一个金发碧眼、扎着双马尾、戴着粉色蝴蝶结的小女孩，穿着可爱的粉色蕾丝公主裙，她正直视镜头，面无表情地举起一个鸡腿。
-
-分镜2 (00:01-00:04):
-[00:01] 特写镜头：镜头聚焦于女孩的后脑勺，她的一只手掀起金色假发，露出下面一张布满尖牙、血淋淋的怪物嘴巴。另一只手将鸡腿塞进这个嘴里，嘴巴贪婪地咀嚼。`;
-
-  const [shots, setShots] = useState<Shot[]>(() => [
-    { id: "shot-1", prompt: defaultPrompt, duration: 5, referenceImage: "https://picsum.photos/seed/s1/320/180", status: "completed", videoUrl: "https://picsum.photos/seed/v1/320/180" },
-    { id: "shot-2", prompt: defaultPrompt, duration: 5, referenceImage: "https://picsum.photos/seed/s2/320/180", status: "generating", progress: 65 },
-    { id: "shot-3", prompt: defaultPrompt, duration: 5, referenceImage: "https://picsum.photos/seed/s3/320/180", status: "failed", errorMessage: "GPU资源不足，请稍后重试" },
-    { id: "shot-4", prompt: defaultPrompt, duration: 5, referenceImage: "https://picsum.photos/seed/s4/320/180", status: "pending" },
-  ]);
-
-  const [model, setModel] = useState("seedance_2.0");
-  const [generatingShotId, setGeneratingShotId] = useState<string | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [historyShotId, setHistoryShotId] = useState<string | null>(null);
-  const [expandedPrompt, setExpandedPrompt] = useState<string | null>(null);
-  const [previewVideo, setPreviewVideo] = useState<string | null>(null);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [showImagePicker, setShowImagePicker] = useState(false);
-  const [editingShotId, setEditingShotId] = useState<string | null>(null);
-  const [isEditingImagePrompt, setIsEditingImagePrompt] = useState(false);
-  const [imagePrompt, setImagePrompt] = useState("");
-  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
-  const [referenceImages, setReferenceImages] = useState<string[]>([
-    "https://picsum.photos/seed/ref1/200/200",
-    "https://picsum.photos/seed/ref2/200/200",
-    "https://picsum.photos/seed/ref3/200/200",
-  ]);
-
-  const handleModelChange = (value: string | null) => setModel(value || "seedance_2.0");
-
-  const updateShot = (id: string, updates: Partial<Shot>) => {
-    setShots((prev) => prev.map((shot) => (shot.id === id ? { ...shot, ...updates } : shot)));
-  };
-
-  // 处理提示词输入，检测 @ 符号
-  const handlePromptChange = (shotId: string, value: string, cursorPos: number) => {
-    updateShot(shotId, { prompt: value });
-    const lastChar = value[cursorPos - 1];
-    const beforeChar = value[cursorPos - 2];
-    if (lastChar === "@" && beforeChar !== "@") {
-      setEditingShotId(shotId);
-      setShowImagePicker(true);
-    }
-  };
-
-  // 插入图片引用
-  const insertImageReference = (type: "reference" | "generated", index: number) => {
-    if (!editingShotId) return;
-    const shot = shots.find(s => s.id === editingShotId);
-    if (!shot) return;
-    const imageNum = type === "reference" ? index + 1 : referenceImages.length + index + 1;
-    const imageRef = `@图${imageNum}`;
-    const cursorPos = shot.prompt.lastIndexOf("@");
-    if (cursorPos !== -1) {
-      const newPrompt = shot.prompt.substring(0, cursorPos) + imageRef + shot.prompt.substring(cursorPos + 1);
-      updateShot(editingShotId, { prompt: newPrompt });
-    }
-    setShowImagePicker(false);
-    setEditingShotId(null);
-  };
-
-  // 关闭图片选择器
-  const closeImagePicker = () => {
-    setShowImagePicker(false);
-    setEditingShotId(null);
-    setIsEditingImagePrompt(false);
-  };
-
-  // 处理生图提示词输入，检测 @ 符号
-  const handleImagePromptChange = (value: string) => {
-    setImagePrompt(value);
-    const cursorPos = value.length;
-    const lastChar = value[cursorPos - 1];
-    const beforeChar = value[cursorPos - 2];
-    if (lastChar === "@" && beforeChar !== "@") {
-      setIsEditingImagePrompt(true);
-      setShowImagePicker(true);
-    }
-  };
-
-  // 插入图片引用到生图提示词
-  const insertImageRefToImagePrompt = (type: "reference" | "generated", index: number) => {
-    const imageNum = type === "reference" ? index + 1 : referenceImages.length + index + 1;
-    const imageRef = `@图${imageNum}`;
-    const cursorPos = imagePrompt.lastIndexOf("@");
-    if (cursorPos !== -1) {
-      const newPrompt = imagePrompt.substring(0, cursorPos) + imageRef + imagePrompt.substring(cursorPos + 1);
-      setImagePrompt(newPrompt);
-    }
-    setShowImagePicker(false);
-    setIsEditingImagePrompt(false);
-  };
-
-  const generateSingleShot = (shotId: string) => {
-    setGeneratingShotId(shotId);
-    setTimeout(() => {
-      setShots((prev) => prev.map((shot) => shot.id === shotId ? { ...shot, status: "generating" as VideoGenerationStatus, progress: 0 } : shot));
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 20;
-        if (progress >= 100) {
-          clearInterval(interval);
-          setShots((prev) => prev.map((shot) => shot.id === shotId ? { ...shot, status: "completed" as VideoGenerationStatus, progress: 100, videoUrl: `https://picsum.photos/seed/${shotId}/640/360` } : shot));
-          setGeneratingShotId(null);
-        } else {
-          setShots((prev) => prev.map((shot) => shot.id === shotId ? { ...shot, progress } : shot));
-        }
-      }, 500);
-    }, 500);
-  };
-
-  const generateAllShots = () => {
-    shots.forEach((shot, index) => { setTimeout(() => generateSingleShot(shot.id), index * 1000); });
-  };
-
-  const handleSave = () => { onSave(shots); onClose(); };
-
-  return (
-    <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent className="w-[95%] !max-w-[95%] flex flex-col">
-        <SheetHeader className="py-3"><SheetTitle className="text-base">编辑分镜 - 结果 {result.id}</SheetTitle></SheetHeader>
-        <div className="mt-2 flex-1 flex gap-6 overflow-hidden">
-          <div className="flex-1 min-w-0 overflow-y-auto space-y-6 pl-2">
-            <h3 className="font-semibold text-lg">分镜列表 ({shots.length})</h3>
-            {shots.map((shot, index) => (
-              <div key={shot.id} className="relative">
-                {/* 分镜卡片 */}
-                <div className={`border-2 border-gray-200 rounded-xl overflow-hidden bg-white ${shot.status === "completed" ? "border-l-4 border-l-green-500" : shot.status === "generating" ? "border-l-4 border-l-blue-500" : shot.status === "failed" ? "border-l-4 border-l-red-500" : "border-l-4 border-l-gray-300"}`}>
-                  {/* 分镜头部 */}
-                  <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-b">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-medium">
-                        {index + 1}
-                      </div>
-                      <span className="font-medium text-gray-800">分镜 {index + 1}</span>
-                      <StatusBadge status={shot.status} />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {shot.history && shot.history.length > 0 && (
-                        <Button variant="outline" size="sm" className="text-orange-600 border-orange-200 hover:bg-orange-50" onClick={() => setHistoryShotId(shot.id)}>
-                          📜 历史版本 ({shot.history.length})
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="sm" className="text-gray-400 hover:text-red-500" onClick={() => setDeleteConfirmId(shot.id)} title="删除分镜">🗑️</Button>
-                    </div>
-                  </div>
-                  {/* 分镜内容 */}
-                  <div className="p-4 flex gap-4">
-                    <div className="w-32 flex-shrink-0">
-                      <div className="aspect-[9/16] bg-gray-100 rounded-lg overflow-hidden relative">
-                        {shot.status === "completed" && shot.videoUrl ? (
-                          <div className="w-full h-full cursor-pointer relative group" onClick={() => setPreviewVideo(shot.videoUrl!)}>
-                            <video src={shot.videoUrl} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                              <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <svg className="w-6 h-6 text-gray-700 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                              </div>
-                            </div>
-                          </div>
-                        ) : shot.status === "generating" ? (
-                          <div className="w-full h-full flex flex-col items-center justify-center">
-                            <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
-                            <span className="text-sm text-gray-500">生成中...</span>
-                          </div>
-                        ) : shot.status === "failed" ? (
-                          <div className="w-full h-full flex flex-col items-center justify-center p-4">
-                            <span className="text-red-500 text-sm mb-2">生成失败</span>
-                            <span className="text-xs text-gray-500 text-center">模型识别到内容可能违反了安全政策（如版权受限、暴力、成人内容或特定人物肖像）,请修改图片或提示词</span>
-                            <span className="text-xs text-blue-500 text-center mt-1 underline cursor-pointer">查看解决方案</span>
-                          </div>
-                        ) : shot.status === "pending" ? (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400"><span className="text-sm">暂未生成视频</span></div>
-                        ) : shot.referenceImage ? (
-                          <img src={shot.referenceImage} alt={`分镜${index + 1}`} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400"><span className="text-sm">待生成</span></div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex-1 space-y-3">
-                      <div className="relative">
-                        <Label className="text-sm text-gray-600">分镜提示词</Label>
-                        <Textarea
-                          value={shot.prompt}
-                          onChange={(e) => {
-                            const cursorPos = e.target.selectionStart;
-                            handlePromptChange(shot.id, e.target.value, cursorPos);
-                          }}
-                          onSelect={(e) => {
-                            const cursorPos = (e.target as HTMLTextAreaElement).selectionStart;
-                            handlePromptChange(shot.id, shot.prompt, cursorPos);
-                          }}
-                          rows={4}
-                          className={`mt-1 ${shot.status === "generating" ? "bg-gray-50 opacity-60" : ""}`}
-                          placeholder="描述这个分镜的内容... 输入 @ 插入图片"
-                          disabled={shot.status === "generating"}
-                        />
-                        {/* @ 图片选择器弹出层 - Dialog 形式 */}
-                        <Dialog open={showImagePicker && editingShotId === shot.id} onOpenChange={(open) => {
-                          if (!open) closeImagePicker();
-                        }}>
-                          <DialogContent className="max-w-md">
-                            <DialogHeader>
-                              <DialogTitle>选择参考图</DialogTitle>
-                            </DialogHeader>
-                            <div className="py-4">
-                              {/* 参考图 */}
-                              {referenceImages.length > 0 && (
-                                <div className="mb-4">
-                                  <div className="text-xs text-gray-500 mb-2">参考图</div>
-                                  <div className="grid grid-cols-4 gap-2">
-                                    {referenceImages.map((img, i) => {
-                                      return (
-                                        <button
-                                          key={`ref-${i}`}
-                                          onClick={() => { insertImageReference("reference", i); closeImagePicker(); }}
-                                          className="relative aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-blue-500 transition-all cursor-pointer"
-                                        >
-                                          <img src={img} alt={`参考图${i + 1}`} className="w-full h-full object-cover" />
-                                          <div className="absolute bottom-0 left-0 right-0 text-center text-xs py-0.5 bg-black/60 text-white">
-                                            @图{i + 1}
-                                          </div>
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-                              {/* 生成的图片 */}
-                              {generatedImages.length > 0 && (
-                                <div>
-                                  <div className="text-xs text-gray-500 mb-2">生成的图片</div>
-                                  <div className="grid grid-cols-4 gap-2">
-                                    {generatedImages.map((img, i) => {
-                                      const imageNum = referenceImages.length + i + 1;
-                                      return (
-                                        <button
-                                          key={`gen-${i}`}
-                                          onClick={() => { insertImageReference("generated", i); closeImagePicker(); }}
-                                          className="relative aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-purple-500 transition-all cursor-pointer"
-                                        >
-                                          <img src={img} alt={`生成图${i + 1}`} className="w-full h-full object-cover" />
-                                          <div className="absolute bottom-0 left-0 right-0 text-center text-xs py-0.5 bg-black/60 text-white">
-                                            @图{imageNum}
-                                          </div>
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-                              {referenceImages.length === 0 && generatedImages.length === 0 && (
-                                <div className="text-center py-8 text-gray-400">暂无图片，请先在右侧添加参考图或生成图片</div>
-                              )}
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      </div>
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-500">时长:</span>
-                          <Select value={shot.duration.toString()} onValueChange={(v) => updateShot(shot.id, { duration: parseInt(v || "5") })} disabled={shot.status === "generating"}>
-                            <SelectTrigger className={`w-28 h-8 ${shot.status === "generating" ? "bg-gray-50 opacity-60" : ""}`}><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {model === "seedance_2.0" ? [4,5,6,7,8,9,10,11,12,13,14,15].map((d) => <SelectItem key={d} value={d.toString()}>{d}秒</SelectItem>) : (<><SelectItem value="5">5秒</SelectItem><SelectItem value="10">10秒</SelectItem></>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button variant="outline" size="sm" disabled={shot.status === "generating"} className={shot.status === "generating" ? "opacity-60" : ""}>✨ 优化提示词</Button>
-                        <span className="text-xs text-gray-400 ml-auto">消耗 {model === "seedance_2.0" ? "10" : "8"} 积分</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => generateSingleShot(shot.id)} disabled={shot.status === "generating"}>{shot.status === "generating" ? "生成中..." : "生成视频"}</Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {/* 插入分镜按钮 */}
-                <div className="flex justify-center my-4">
-                  <Button variant="outline" size="sm" className="bg-white border-dashed text-gray-500 hover:text-gray-600 hover:border-gray-400" onClick={() => { const newShot = { id: `shot-${Date.now()}`, prompt: "新分镜提示词...", duration: 5, status: "pending" as const }; const newShots = [...shots]; newShots.splice(index + 1, 0, newShot); setShots(newShots); }}>
-                    + 插入新分镜
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="w-96 flex-shrink-0 space-y-6 overflow-y-auto">
-            <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-              <h4 className="font-medium">模型设置</h4>
-              <div><Label className="text-sm text-gray-600">选择模型</Label><Select value={model} onValueChange={handleModelChange}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="seedance_2.0">Seedance 2.0 (10积分/个)</SelectItem><SelectItem value="wan_2.6">Wan 2.6 (8积分/个)</SelectItem></SelectContent></Select></div>
-              {/* 积分消耗预览 */}
-              <div className="bg-white p-3 rounded-lg border">
-                <div className="text-sm text-gray-600 mb-2">批量生成预览</div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">待生成:</span>
-                  <span className="font-medium">{shots.filter(s => s.status !== "completed").length} 个</span>
-                </div>
-                <div className="flex justify-between items-center mt-1">
-                  <span className="text-sm text-gray-500">预计消耗:</span>
-                  <span className="font-medium text-orange-600">
-                    {shots.filter(s => s.status !== "completed").length * (model === "seedance_2.0" ? 10 : 8)} 积分
-                  </span>
-                </div>
-              </div>
-              <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={generateAllShots}>批量生成全部</Button>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-              <h4 className="font-medium">参考图</h4>
-              <div className="text-xs text-gray-500 mb-2">提示：在提示词中使用 @ 引用参考图，如 "@图1"</div>
-              <div className="grid grid-cols-3 gap-2">
-                {referenceImages.map((img, i) => (
-                  <div key={i} className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative group cursor-pointer" onClick={() => setPreviewImage(img)}>
-                    <img src={img} alt={`参考图${i + 1}`} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="destructive" size="sm" className="h-6 w-6 p-0 bg-red-500 hover:bg-red-600" onClick={(e) => { e.stopPropagation(); setReferenceImages(prev => prev.filter((_, idx) => idx !== i)); }}>
-                        ✕
-                      </Button>
-                    </div>
-                    <div className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-1 rounded">@图{i + 1}</div>
-                  </div>
-                ))}
-                {referenceImages.length < 9 && (
-                  <button className="aspect-square bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 flex items-center justify-center text-gray-400 hover:text-gray-500" onClick={() => setReferenceImages(prev => [...prev, `https://picsum.photos/seed/ref${Date.now()}/200/200`])}>
-                    +
-                  </button>
-                )}
-              </div>
-              {referenceImages.length === 0 && (
-                <div className="text-center py-4 text-gray-400 text-sm">暂无参考图，点击 + 添加</div>
-              )}
-            </div>
-            {/* 参考视频 - 展示创建任务时选择的参考视频 */}
-            <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-              <h4 className="font-medium">参考视频</h4>
-              <div className="text-xs text-gray-500 mb-2">任务创建时选择的参考视频</div>
-              <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                {result.referenceVideo ? (
-                  <img src={result.referenceVideo.thumbnail || "https://picsum.photos/seed/refv/320/180"} alt="参考视频" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    <span className="text-sm">未选择参考视频</span>
-                  </div>
-                )}
-              </div>
-              <div className="text-sm text-gray-600">{result.referenceVideo?.name || "未设置"}</div>
-            </div>
-          </div>
-        </div>
-        {/* 抽屉底部操作栏 */}
-        <div className="border-t bg-white px-6 py-4 flex justify-end items-center gap-3">
-          <Button variant="outline" onClick={onClose}>取消</Button>
-          <Button className="bg-orange-500 hover:bg-orange-600">去配音</Button>
-        </div>
-      </SheetContent>
-      <Dialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>删除分镜？</DialogTitle><DialogDescription>删除后，该分镜下的视频、提示词等素材将被清空且无法找回。</DialogDescription></DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>保留分镜</Button>
-            <Button onClick={() => { if (deleteConfirmId) { setShots((prev) => prev.filter((s) => s.id !== deleteConfirmId)); setDeleteConfirmId(null); } }} className="bg-red-500 hover:bg-red-600 text-white">确认删除</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* 图片预览对话框 */}
-      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>图片预览</DialogTitle></DialogHeader>
-          <div className="flex justify-center">
-            {previewImage && <img src={previewImage} alt="预览" className="max-w-full max-h-[60vh] object-contain rounded-lg" />}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </Sheet>
-  );
-}
-
-// 编辑v2：包含生视频配置和独立生图配置
+// 编辑抽屉：包含生视频配置和独立生图配置
 function EditDrawerV2({ open, onClose, result, onSave }: {
   open: boolean;
   onClose: () => void;
@@ -1868,7 +1480,7 @@ function MaterialPickerDialog({ open, onClose, onSelect }: {
   );
 }
 
-function ResultCard({ result, index, onDelete, onEdit, onEditV2, onCopy }: { result: GenerationResult; index: number; onDelete: (id: string) => void; onEdit: (result: GenerationResult) => void; onEditV2: (result: GenerationResult) => void; onCopy: (result: GenerationResult) => void; }) {
+function ResultCard({ result, index, onDelete, onEdit, onCopy }: { result: GenerationResult; index: number; onDelete: (id: string) => void; onEdit: (result: GenerationResult) => void; onCopy: (result: GenerationResult) => void; }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -1937,7 +1549,7 @@ function ResultCard({ result, index, onDelete, onEdit, onEditV2, onCopy }: { res
                 >
                   {copied ? "已复制" : "复制"}
                 </Button>
-                <Button variant="outline" size="sm" className="bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100" onClick={() => onEditV2(result)}>编辑</Button>
+                <Button variant="outline" size="sm" className="bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100" onClick={() => onEdit(result)}>编辑</Button>
                 <Button variant="outline" size="sm" className="flex-1">保存为作品</Button>
               </div>
             </>
@@ -1959,7 +1571,7 @@ function ResultCard({ result, index, onDelete, onEdit, onEditV2, onCopy }: { res
                 >
                   {copied ? "已复制" : "复制"}
                 </Button>
-                <Button variant="outline" size="sm" className="bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100" onClick={() => onEditV2(result)}>编辑</Button>
+                <Button variant="outline" size="sm" className="bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100" onClick={() => onEdit(result)}>编辑</Button>
               </div>
             </>
           )}
@@ -1980,7 +1592,7 @@ function ResultCard({ result, index, onDelete, onEdit, onEditV2, onCopy }: { res
                 >
                   {copied ? "已复制" : "复制"}
                 </Button>
-                <Button variant="outline" size="sm" className="bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100" onClick={() => onEditV2(result)}>编辑</Button>
+                <Button variant="outline" size="sm" className="bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100" onClick={() => onEdit(result)}>编辑</Button>
               </div>
             </>
           )}
@@ -2339,14 +1951,12 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
 }
 
 function EditTab({ task, onDeleteResult, onCopyResult }: { task: GenerationTask; onDeleteResult: (id: string) => void; onCopyResult: (result: GenerationResult) => void; }) {
-  const [editingResult, setEditingResult] = useState<GenerationResult | null>(null);
   const [editingResultV2, setEditingResultV2] = useState<GenerationResult | null>(null);
   return (
     <div>
       <div className="flex justify-between items-center mb-4"><h2 className="text-lg font-semibold">生成结果 ({task.results.length})</h2></div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{task.results.map((result, index) => <ResultCard key={result.id} result={result} index={index} onDelete={onDeleteResult} onEdit={setEditingResult} onEditV2={setEditingResultV2} onCopy={onCopyResult} />)}</div>
-      {editingResult && <EditDrawer open={!!editingResult} onClose={() => setEditingResult(null)} result={editingResult} onSave={(shots) => console.log("保存分镜:", shots)} />}
-      {editingResultV2 && <EditDrawerV2 open={!!editingResultV2} onClose={() => setEditingResultV2(null)} result={editingResultV2} onSave={(shots) => console.log("保存分镜v2:", shots)} />}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{task.results.map((result, index) => <ResultCard key={result.id} result={result} index={index} onDelete={onDeleteResult} onEdit={setEditingResultV2} onCopy={onCopyResult} />)}</div>
+      {editingResultV2 && <EditDrawerV2 open={!!editingResultV2} onClose={() => setEditingResultV2(null)} result={editingResultV2} onSave={(shots) => console.log("保存分镜:", shots)} />}
     </div>
   );
 }
