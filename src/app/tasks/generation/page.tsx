@@ -1611,6 +1611,7 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
   // 模式四：生成前贴文案相关
   const [creativeDescriptions, setCreativeDescriptions] = useState<string[]>(config.creativeDescriptions || []);
   const [creativeCount, setCreativeCount] = useState(10);
+  const [creativeWordCount, setCreativeWordCount] = useState(100);
   const [isGeneratingCreative, setIsGeneratingCreative] = useState(false);
   const [creativeEditingIndex, setCreativeEditingIndex] = useState<number | null>(null);
   const [creativeEditValue, setCreativeEditValue] = useState("");
@@ -1786,6 +1787,15 @@ function TaskCreationTab({ task, isEditing = false, onCreated }: { task: Generat
                 min={1}
                 step={1}
                 className="flex-1"
+              />
+              <Label className="whitespace-nowrap">字数: {creativeWordCount}</Label>
+              <Slider
+                value={[creativeWordCount]}
+                onValueChange={(val) => setCreativeWordCount(Array.isArray(val) ? val[0] : val)}
+                max={300}
+                min={10}
+                step={10}
+                className="w-32"
               />
               <Button
                 onClick={handleGenerateCreativeDescriptions}
